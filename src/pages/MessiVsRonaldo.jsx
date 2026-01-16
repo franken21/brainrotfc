@@ -221,6 +221,7 @@ const BoomText = ({ text }) => (
 
 const MessiVsRonaldo = () => {
   const navigate = useNavigate();
+  const inputRef = useRef(null);
   const [players, setPlayers] = useState([]);
   const [newPlayerName, setNewPlayerName] = useState('');
   const [messiCaptain, setMessiCaptain] = useState(null);
@@ -264,6 +265,10 @@ const MessiVsRonaldo = () => {
     if (newPlayerName.trim() && !players.find(p => p.name.toLowerCase() === newPlayerName.trim().toLowerCase())) {
       setPlayers([...players, { name: newPlayerName.trim(), id: Date.now() }]);
       setNewPlayerName('');
+      // Keep focus on input for quick successive entries
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 10);
     }
   };
 
@@ -463,6 +468,7 @@ const MessiVsRonaldo = () => {
             
             <div className="flex gap-2 mb-3">
               <input
+                ref={inputRef}
                 type="text"
                 value={newPlayerName}
                 onChange={(e) => setNewPlayerName(e.target.value)}
