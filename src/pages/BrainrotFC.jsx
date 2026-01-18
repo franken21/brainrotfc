@@ -603,46 +603,50 @@ const Ball = ({ x, y, visible, character, animating }) => {
 
 const TapZones = ({ onZoneTap, disabled, selectedZone }) => {
   const zones = [
-    { id: 1, x: 20, y: 30, label: '↖', dirX: -0.8, dirY: 0.9 },
-    { id: 2, x: 50, y: 25, label: '↑', dirX: 0, dirY: 1 },
-    { id: 3, x: 80, y: 30, label: '↗', dirX: 0.8, dirY: 0.9 },
-    { id: 4, x: 22, y: 65, label: '←', dirX: -0.6, dirY: 0.4 },
-    { id: 5, x: 50, y: 70, label: '•', dirX: 0, dirY: 0.3 },
-    { id: 6, x: 78, y: 65, label: '→', dirX: 0.6, dirY: 0.4 },
+    { id: 1, label: '↖', dirX: -0.8, dirY: 0.9, difficulty: 'medium' },
+    { id: 2, label: '↑', dirX: 0, dirY: 1, difficulty: 'hard' },  // Top center - harder
+    { id: 3, label: '↗', dirX: 0.8, dirY: 0.9, difficulty: 'medium' },
+    { id: 4, label: '←', dirX: -0.6, dirY: 0.5, difficulty: 'easy' },
+    { id: 5, label: '•', dirX: 0, dirY: 0.4, difficulty: 'hard' },  // Low center - keeper favorite
+    { id: 6, label: '→', dirX: 0.6, dirY: 0.5, difficulty: 'easy' },
   ];
 
   return (
-    <div className="absolute inset-[12px] z-10">
-      {zones.map(zone => (
-        <button
-          key={zone.id}
-          onClick={() => !disabled && onZoneTap(zone)}
-          disabled={disabled}
-          className={`
-            absolute w-[30%] h-[45%] rounded-lg border-2 
-            ${selectedZone?.id === zone.id ? 'border-yellow-400 bg-yellow-400/20' : 'border-white/30 bg-white/10'}
-            ${!disabled ? 'active:bg-white/30' : 'opacity-50'}
-            transition-all flex items-center justify-center
-          `}
-          style={{
-            left: `${zone.x - 15}%`,
-            top: `${zone.y - 22}%`,
-          }}
-        >
-          <span className={`text-2xl font-bold ${selectedZone?.id === zone.id ? 'text-yellow-400' : 'text-white/60'}`}>
-            {zone.label}
-          </span>
-        </button>
-      ))}
-      
-      {!disabled && !selectedZone && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 px-4 py-2 rounded-full">
-          <span className="text-white text-sm font-bold">👆 VELG HVOR DU VIL SKYTE</span>
+    <div className="absolute bottom-8 left-0 right-0 z-20 px-4">
+      <div className="max-w-sm mx-auto bg-black/70 backdrop-blur-sm rounded-3xl p-4 shadow-2xl">
+        {!selectedZone && (
+          <p className="text-white text-center text-sm font-bold mb-3">👆 VELG RETNING</p>
+        )}
+        <div className="grid grid-cols-3 gap-2">
+          {zones.map(zone => (
+            <button
+              key={zone.id}
+              onClick={() => !disabled && onZoneTap(zone)}
+              disabled={disabled}
+              className={`
+                aspect-square rounded-2xl border-3 text-4xl font-bold
+                transition-all duration-200
+                ${selectedZone?.id === zone.id 
+                  ? 'border-yellow-400 bg-yellow-400/40 text-yellow-300 scale-105 shadow-lg shadow-yellow-500/50' 
+                  : 'border-white/50 bg-white/15 text-white hover:bg-white/25 active:scale-95'
+                }
+                ${disabled ? 'opacity-40' : ''}
+                flex items-center justify-center
+              `}
+            >
+              <div className="flex flex-col items-center">
+                <span>{zone.label}</span>
+                {zone.difficulty === 'hard' && !selectedZone && (
+                  <span className="text-xs text-red-400 font-bold mt-1">HARD</span>
+                )}
+              </div>
+            </button>
+          ))}
         </div>
-      )}
+      </div>
     </div>
   );
-};
+}
 
 const TimingRing = ({ zone, timingRing, onTap, disabled }) => {
   const getTimingColor = () => {
@@ -651,6 +655,60 @@ const TimingRing = ({ zone, timingRing, onTap, disabled }) => {
     if (timingRing <= 70) return '#eab308';
     return '#ef4444';
   };
+  
+  const getTimingText = () => {
+    if (timingRing <= 25) return 'PERFEKT!';
+    if (timingRing <= 45) return 'BRA!';
+    if (timingRing <= 70) return 'OK';
+    return 'FOR SENT!';
+  };
+
+  if (!zone) return null;
+
+  return (
+    <button
+      onClick={() => !disabled && onTap()}
+      disabled={disabled}
+      className="absolute inset-0 z-30 flex items-center justify-center bg-black/50"
+    >
+      <div className="bg-black/90 rounded-3xl p-8 max-w-sm w-full mx-4">
+        <div className="text-white text-center text-xl font-bold mb-2">TAP NÅ!</div>
+        <div className="text-center mb-4">
+          <span className="text-sm font-bold" style={{ color: getTimingColor() }}>
+            {getTimingText()}
+          </span>
+        </div>
+        
+        <div className="relative w-full aspect-square max-w-[250px] mx-auto flex items-center justify-center">
+          {/* Outer ring */}
+          <div 
+            className="absolute rounded-full border-4 transition-all duration-75"
+            style={{
+              width: `${timingRing}%`,
+              height: `${timingRing}%`,
+              borderColor: getTimingColor(),
+              boxShadow: `0 0 40px ${getTimingColor()}`,
+            }}
+          />
+          
+          {/* Center target */}
+          <div 
+            className="absolute w-8 h-8 rounded-full shadow-lg"
+            style={{ 
+              backgroundColor: getTimingColor(),
+              boxShadow: `0 0 20px ${getTimingColor()}`
+            }}
+          />
+          
+          {/* Direction indicator */}
+          <div className="absolute -bottom-12 text-4xl">
+            {zone.label}
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
 
   if (!zone) return null;
 
@@ -890,6 +948,12 @@ const BrainRotFC = () => {
       targetY += (Math.random() - 0.5) * 15;
     }
     
+    // Make center shots harder - more drift
+    const isCenter = Math.abs(zone.dirX) < 0.3;
+    if (isCenter && quality !== 'perfect') {
+      targetX += (Math.random() - 0.5) * 25; // Extra drift for center
+    }
+    
     if (quality === 'ok') {
       targetX += (50 - targetX) * 0.3;
       targetY += (50 - targetY) * 0.2;
@@ -921,6 +985,9 @@ const BrainRotFC = () => {
     let keeperDelay = 0;
     const ballX = targetX - 50;
     
+    // Keeper is better at reading center shots
+    const centerBonus = isCenter ? 1.3 : 1;
+    
     switch (keeper.behavior) {
       case 'early':
         keeperTargetX = (Math.random() > 0.5 ? 1 : -1) * 60;
@@ -931,19 +998,19 @@ const BrainRotFC = () => {
         keeperDelay = 100;
         break;
       case 'react':
-        keeperTargetX = ballX;
-        keeperDelay = keeperStunned ? 400 : 200;
+        keeperTargetX = ballX * centerBonus; // Better reaction to center
+        keeperDelay = keeperStunned ? 400 : (isCenter ? 150 : 200);
         break;
       case 'track':
-        keeperTargetX = canTrack ? ballX : (Math.random() - 0.5) * 60;
-        keeperDelay = 150;
+        keeperTargetX = canTrack ? ballX * centerBonus : (Math.random() - 0.5) * 60;
+        keeperDelay = isCenter ? 100 : 150;
         break;
       case 'chaos':
         keeperTargetX = (Math.random() - 0.5) * 100;
         keeperDelay = Math.random() * 200;
         break;
       default:
-        keeperTargetX = ballX * 0.8;
+        keeperTargetX = ballX * 0.8 * centerBonus;
         keeperDelay = 200;
     }
     
@@ -953,7 +1020,7 @@ const BrainRotFC = () => {
     }, keeperDelay);
     
     setTimeout(() => {
-      const keeperReach = 35 * keeper.size * keeper.speed;
+      const keeperReach = 35 * keeper.size * keeper.speed * (isCenter ? 1.2 : 1); // Bigger reach for center
       const saved = Math.abs(ballX - keeperTargetX) < keeperReach && !keeperStunned;
       
       const qualityBonus = quality === 'perfect' ? 0.7 : quality === 'good' ? 0.85 : 1;
