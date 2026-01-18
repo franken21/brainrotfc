@@ -597,12 +597,10 @@ const Ball = ({ x, y, visible, character, animating }) => {
   );
 };
 
-
 // ============================================
 // GRID SHOOTING UI COMPONENTS
 // ============================================
 
-// Tap Zones - Grid of 6 zones in goal
 const TapZones = ({ onZoneTap, disabled, selectedZone }) => {
   const zones = [
     { id: 1, x: 20, y: 30, label: '↖', dirX: -0.8, dirY: 0.9 },
@@ -620,18 +618,18 @@ const TapZones = ({ onZoneTap, disabled, selectedZone }) => {
           key={zone.id}
           onClick={() => !disabled && onZoneTap(zone)}
           disabled={disabled}
-          className={\`
+          className={`
             absolute w-[30%] h-[45%] rounded-lg border-2 
-            \${selectedZone?.id === zone.id ? 'border-yellow-400 bg-yellow-400/20' : 'border-white/30 bg-white/10'}
-            \${!disabled ? 'active:bg-white/30' : 'opacity-50'}
+            ${selectedZone?.id === zone.id ? 'border-yellow-400 bg-yellow-400/20' : 'border-white/30 bg-white/10'}
+            ${!disabled ? 'active:bg-white/30' : 'opacity-50'}
             transition-all flex items-center justify-center
-          \`}
+          `}
           style={{
-            left: \`\${zone.x - 15}%\`,
-            top: \`\${zone.y - 22}%\`,
+            left: `${zone.x - 15}%`,
+            top: `${zone.y - 22}%`,
           }}
         >
-          <span className={\`text-2xl font-bold \${selectedZone?.id === zone.id ? 'text-yellow-400' : 'text-white/60'}\`}>
+          <span className={`text-2xl font-bold ${selectedZone?.id === zone.id ? 'text-yellow-400' : 'text-white/60'}`}>
             {zone.label}
           </span>
         </button>
@@ -646,7 +644,6 @@ const TapZones = ({ onZoneTap, disabled, selectedZone }) => {
   );
 };
 
-// Timing Ring - Shrinking circle for timing
 const TimingRing = ({ zone, timingRing, onTap, disabled }) => {
   const getTimingColor = () => {
     if (timingRing <= 25) return '#22c55e';
@@ -666,17 +663,17 @@ const TimingRing = ({ zone, timingRing, onTap, disabled }) => {
       <div 
         className="absolute w-[30%] h-[45%] rounded-lg border-4 flex items-center justify-center"
         style={{
-          left: \`\${zone.x - 15}%\`,
-          top: \`\${zone.y - 22}%\`,
+          left: `${zone.x - 15}%`,
+          top: `${zone.y - 22}%`,
           borderColor: getTimingColor(),
-          boxShadow: \`0 0 20px \${getTimingColor()}\`,
+          boxShadow: `0 0 20px ${getTimingColor()}`,
         }}
       >
         <div 
           className="rounded-full border-4 transition-all duration-75"
           style={{
-            width: \`\${timingRing}%\`,
-            height: \`\${timingRing}%\`,
+            width: `${timingRing}%`,
+            height: `${timingRing}%`,
             borderColor: getTimingColor(),
             opacity: 0.8,
           }}
@@ -692,6 +689,7 @@ const TimingRing = ({ zone, timingRing, onTap, disabled }) => {
     </button>
   );
 };
+
 // Character Card Mini
 const CharacterCardMini = ({ character, selected, onClick }) => {
   const char = CHARACTERS[character];
@@ -730,7 +728,7 @@ const CharacterCardMini = ({ character, selected, onClick }) => {
 };
 
 // ============================================
-// MAIN GAME COMPONENT  
+// MAIN GAME COMPONENT
 // ============================================
 
 const BrainRotFC = () => {
@@ -768,12 +766,14 @@ const BrainRotFC = () => {
   const [usedSecondChance, setUsedSecondChance] = useState(false);
   const [showResult, setShowResult] = useState(false);
   
-  // Grid shooting state (NEW)
+  // Grid shooting state
   const [phase, setPhase] = useState('aim');
   const [selectedZone, setSelectedZone] = useState(null);
   const [timingRing, setTimingRing] = useState(100);
   const [timingResult, setTimingResult] = useState(null);
   const timingRef = useRef(null);
+  
+  // Load saved progress
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -806,246 +806,233 @@ const BrainRotFC = () => {
     setSelectedLeague(league);
     setScreen('select-character');
   };
-  const startMatch = (league) => {
-    setSelectedLeague(league);
-    setScreen('select-character');
-  };
-// ============================================
-// GRID-BASED SHOOTING LOGIC
-// ============================================
-
-// NEW MATCH STATE TO ADD:
-/*
-  const [phase, setPhase] = useState('aim'); // 'aim', 'timing', 'shooting', 'result'
-  const [selectedZone, setSelectedZone] = useState(null);
-  const [timingRing, setTimingRing] = useState(100);
-  const [timingResult, setTimingResult] = useState(null); // 'perfect', 'good', 'ok', 'miss'
-  const timingRef = useRef(null);
-*/
-
-// Handle zone tap - starts timing phase
-const handleZoneTap = (zone) => {
-  if (phase !== 'aim') return;
   
-  setSelectedZone(zone);
-  setPhase('timing');
-  setTimingRing(100);
-  
-  // Start timing ring animation
-  timingRef.current = setInterval(() => {
-    setTimingRing(prev => {
-      if (prev <= 0) {
-        // Ran out of time - auto miss
-        clearInterval(timingRef.current);
-        executeShot(zone, 'miss');
-        return 0;
-      }
-      return prev - 2; // Speed of ring shrink
-    });
-  }, 30);
-};
-
-// Handle timing tap - determines shot quality
-const handleTimingTap = () => {
-  if (phase !== 'timing' || !selectedZone) return;
-  clearInterval(timingRef.current);
-  
-  // Determine timing quality based on ring size
-  let quality;
-  if (timingRing <= 25) quality = 'perfect';
-  else if (timingRing <= 45) quality = 'good';
-  else if (timingRing <= 70) return 'ok';
-  else quality = 'miss';
-  
-  setTimingResult(quality);
-  executeShot(selectedZone, quality);
-};
-
-// Execute the shot - INTEGRATES ALL POWERS
-const executeShot = (zone, quality) => {
-  setPhase('shooting');
-  
-  const char = CHARACTERS[selectedCharacter];
-  const keeper = KEEPERS[currentKeeper];
-  const charPower = char.power;
-  
-  // Apply STUN power
-  if (charPower === 'STUN') {
-    setKeeperStunned(true);
-    setTimeout(() => setKeeperStunned(false), 500);
-  }
-  
-  // Calculate base target from zone
-  let targetX = 50 + zone.dirX * 40; // Convert zone direction to screen position
-  let targetY = 20 + (1 - zone.dirY) * 20;
-  
-  // Apply CURL power (exaggerate direction)
-  if (charPower === 'CURL') {
-    targetX = 50 + zone.dirX * 60; // More extreme curve
-  }
-  
-  // Apply KNUCKLE power (add randomness)
-  if (charPower === 'KNUCKLE') {
-    targetX += (Math.random() - 0.5) * 30;
-    targetY += (Math.random() - 0.5) * 15;
-  }
-  
-  // Add drift based on timing quality
-  if (quality === 'ok') {
-    targetX += (50 - targetX) * 0.3; // Drift toward center
-    targetY += (50 - targetY) * 0.2;
-  } else if (quality === 'miss') {
-    // Miss the goal entirely
-    if (zone.dirY > 0.6) {
-      targetY = -10; // Over the bar
-    } else {
-      targetX = zone.dirX < 0 ? -10 : 110; // Wide
-    }
-  }
-  
-  // Determine if shot is on target
-  const isOnTarget = targetX > 10 && targetX < 90 && targetY > 10 && quality !== 'miss';
-  
-  // Apply ROCKET power (faster shot)
-  const shotSpeed = charPower === 'ROCKET' ? 300 : 500;
-  
-  // Apply DISGUISE power (keeper can't track)
-  const canTrack = charPower !== 'DISGUISE';
-  
-  // Animate ball
-  setBallAnimating(true);
-  
-  if (!isOnTarget) {
-    // Miss - ball goes wide or over
-    setBallPosition({ x: targetX, y: targetY });
-    setTimeout(() => {
-      handleShotResult('miss');
-    }, shotSpeed);
-    return;
-  }
-  
-  // Ball going toward goal
-  setBallPosition({ x: targetX, y: targetY });
-  
-  // Keeper AI behavior
-  let keeperTargetX = 0;
-  let keeperDelay = 0;
-  const ballX = targetX - 50; // Relative to center
-  
-  switch (keeper.behavior) {
-    case 'early':
-      // Dives early to random side
-      keeperTargetX = (Math.random() > 0.5 ? 1 : -1) * 60;
-      keeperDelay = 0;
-      break;
-    case 'commit':
-      // Commits to likely side based on zone
-      keeperTargetX = (zone.dirX > 0 ? 1 : -1) * 60 * (Math.random() > 0.3 ? 1 : -1);
-      keeperDelay = 100;
-      break;
-    case 'react':
-      // Waits and reacts
-      keeperTargetX = ballX;
-      keeperDelay = keeperStunned ? 400 : 200;
-      break;
-    case 'track':
-      // Tracks aim if possible (DISGUISE blocks this)
-      keeperTargetX = canTrack ? ballX : (Math.random() - 0.5) * 60;
-      keeperDelay = 150;
-      break;
-    case 'chaos':
-      // Random
-      keeperTargetX = (Math.random() - 0.5) * 100;
-      keeperDelay = Math.random() * 200;
-      break;
-    default:
-      keeperTargetX = ballX * 0.8;
-      keeperDelay = 200;
-  }
-  
-  // Keeper dive
-  setTimeout(() => {
-    setKeeperPosition(keeperTargetX);
-    setKeeperState(keeperTargetX < 0 ? 'diving-left' : 'diving-right');
-  }, keeperDelay);
-  
-  // Check if saved
-  setTimeout(() => {
-    const keeperReach = 35 * keeper.size * keeper.speed;
-    const saved = Math.abs(ballX - keeperTargetX) < keeperReach && !keeperStunned;
+  const confirmCharacterAndStart = () => {
+    const league = LEAGUES.find(l => l.id === selectedLeague);
+    const keeperType = league.keepers[Math.floor(Math.random() * league.keepers.length)];
     
-    // Timing quality affects save difficulty
-    const qualityBonus = quality === 'perfect' ? 0.7 : quality === 'good' ? 0.85 : 1;
-    const actualSaved = saved && (Math.random() < qualityBonus);
-    
-    if (actualSaved) {
-      setKeeperState('saved');
-      handleShotResult('saved');
-    } else {
-      setKeeperState('beaten');
-      handleShotResult('goal');
-    }
-  }, shotSpeed);
-};
-
-// Handle shot result - INCLUDES SECOND_CHANCE POWER
-const handleShotResult = (result) => {
-  const char = CHARACTERS[selectedCharacter];
-  
-  // Check SECOND_CHANCE power
-  if ((result === 'saved' || result === 'miss') && char.power === 'SECOND_CHANCE' && !usedSecondChance) {
-    setUsedSecondChance(true);
-    setPhase('aim');
-    setSelectedZone(null);
-    setTimingResult(null);
+    setCurrentKeeper(keeperType);
+    setCurrentPenalty(0);
+    setGoals(0);
+    setUsedSecondChance(false);
     setBallPosition({ x: 50, y: 85 });
-    setBallAnimating(false);
+    setBallVisible(true);
     setKeeperState('ready');
     setKeeperPosition(0);
-    // Show "SECOND CHANCE" message briefly
-    setTimeout(() => {
-      setBallVisible(true);
-    }, 500);
-    return;
-  }
-  
-  setShotResult(result);
-  setPhase('result');
-  
-  if (result === 'goal') {
-    setGoals(g => g + 1);
-    setCoins(c => c + 20);
-  }
-  
-  // Next penalty or end match
-  setTimeout(() => {
-    const league = LEAGUES.find(l => l.id === selectedLeague);
-    const nextPenalty = currentPenalty + 1;
+    setKeeperStunned(false);
+    setShotResult(null);
+    setShowResult(false);
     
-    if (nextPenalty >= 5) {
-      // Match over
-      endMatch();
-    } else {
-      // Next penalty
-      setCurrentPenalty(nextPenalty);
-      setPhase('aim');
-      setSelectedZone(null);
-      setTimingResult(null);
+    // Grid state
+    setPhase('aim');
+    setSelectedZone(null);
+    setTimingRing(100);
+    setTimingResult(null);
+    
+    setScreen('match');
+  };
+  
+  // Grid shooting functions
+  const handleZoneTap = (zone) => {
+    if (phase !== 'aim') return;
+    
+    setSelectedZone(zone);
+    setPhase('timing');
+    setTimingRing(100);
+    
+    timingRef.current = setInterval(() => {
+      setTimingRing(prev => {
+        if (prev <= 0) {
+          clearInterval(timingRef.current);
+          executeShot(zone, 'miss');
+          return 0;
+        }
+        return prev - 2;
+      });
+    }, 30);
+  };
+  
+  const handleTimingTap = () => {
+    if (phase !== 'timing' || !selectedZone) return;
+    clearInterval(timingRef.current);
+    
+    let quality;
+    if (timingRing <= 25) quality = 'perfect';
+    else if (timingRing <= 45) quality = 'good';
+    else if (timingRing <= 70) quality = 'ok';
+    else quality = 'miss';
+    
+    setTimingResult(quality);
+    executeShot(selectedZone, quality);
+  };
+  
+  const executeShot = (zone, quality) => {
+    setPhase('shooting');
+    
+    const char = CHARACTERS[selectedCharacter];
+    const keeper = KEEPERS[currentKeeper];
+    const charPower = char.power;
+    
+    if (charPower === 'STUN') {
+      setKeeperStunned(true);
+      setTimeout(() => setKeeperStunned(false), 500);
+    }
+    
+    let targetX = 50 + zone.dirX * 40;
+    let targetY = 20 + (1 - zone.dirY) * 20;
+    
+    if (charPower === 'CURL') {
+      targetX = 50 + zone.dirX * 60;
+    }
+    
+    if (charPower === 'KNUCKLE') {
+      targetX += (Math.random() - 0.5) * 30;
+      targetY += (Math.random() - 0.5) * 15;
+    }
+    
+    if (quality === 'ok') {
+      targetX += (50 - targetX) * 0.3;
+      targetY += (50 - targetY) * 0.2;
+    } else if (quality === 'miss') {
+      if (zone.dirY > 0.6) {
+        targetY = -10;
+      } else {
+        targetX = zone.dirX < 0 ? -10 : 110;
+      }
+    }
+    
+    const isOnTarget = targetX > 10 && targetX < 90 && targetY > 10 && quality !== 'miss';
+    const shotSpeed = charPower === 'ROCKET' ? 300 : 500;
+    const canTrack = charPower !== 'DISGUISE';
+    
+    setBallAnimating(true);
+    
+    if (!isOnTarget) {
+      setBallPosition({ x: targetX, y: targetY });
+      setTimeout(() => {
+        handleShotResult('miss');
+      }, shotSpeed);
+      return;
+    }
+    
+    setBallPosition({ x: targetX, y: targetY });
+    
+    let keeperTargetX = 0;
+    let keeperDelay = 0;
+    const ballX = targetX - 50;
+    
+    switch (keeper.behavior) {
+      case 'early':
+        keeperTargetX = (Math.random() > 0.5 ? 1 : -1) * 60;
+        keeperDelay = 0;
+        break;
+      case 'commit':
+        keeperTargetX = (zone.dirX > 0 ? 1 : -1) * 60 * (Math.random() > 0.3 ? 1 : -1);
+        keeperDelay = 100;
+        break;
+      case 'react':
+        keeperTargetX = ballX;
+        keeperDelay = keeperStunned ? 400 : 200;
+        break;
+      case 'track':
+        keeperTargetX = canTrack ? ballX : (Math.random() - 0.5) * 60;
+        keeperDelay = 150;
+        break;
+      case 'chaos':
+        keeperTargetX = (Math.random() - 0.5) * 100;
+        keeperDelay = Math.random() * 200;
+        break;
+      default:
+        keeperTargetX = ballX * 0.8;
+        keeperDelay = 200;
+    }
+    
+    setTimeout(() => {
+      setKeeperPosition(keeperTargetX);
+      setKeeperState(keeperTargetX < 0 ? 'diving-left' : 'diving-right');
+    }, keeperDelay);
+    
+    setTimeout(() => {
+      const keeperReach = 35 * keeper.size * keeper.speed;
+      const saved = Math.abs(ballX - keeperTargetX) < keeperReach && !keeperStunned;
+      
+      const qualityBonus = quality === 'perfect' ? 0.7 : quality === 'good' ? 0.85 : 1;
+      const actualSaved = saved && (Math.random() < qualityBonus);
+      
+      if (actualSaved) {
+        setKeeperState('saved');
+        handleShotResult('saved');
+      } else {
+        setKeeperState('beaten');
+        handleShotResult('goal');
+      }
+    }, shotSpeed);
+  };
+  
+  // Handle shot result
+  const handleShotResult = (result) => {
+    const char = CHARACTERS[selectedCharacter];
+    
+    // Check SECOND_CHANCE power
+    if ((result === 'saved' || result === 'miss') && char.power === 'SECOND_CHANCE' && !usedSecondChance) {
+      setUsedSecondChance(true);
       setShotResult(null);
       setBallPosition({ x: 50, y: 85 });
       setBallAnimating(false);
-      setBallVisible(true);
       setKeeperState('ready');
       setKeeperPosition(0);
       
-      // Maybe change keeper
-      if (Math.random() > 0.5) {
-        const newKeeper = league.keepers[Math.floor(Math.random() * league.keepers.length)];
-        setCurrentKeeper(newKeeper);
-      }
+      // Reset grid state
+      setPhase('aim');
+      setSelectedZone(null);
+      setTimingResult(null);
+      
+      setTimeout(() => {
+        setBallVisible(true);
+      }, 500);
+      return;
     }
-  }, 1500);
-};
+    
+    setShotResult(result);
+    setPhase('result');
+    
+    if (result === 'goal') {
+      setGoals(g => g + 1);
+      setCoins(c => c + 20);
+    }
+    
+    // Next penalty or end match
+    setTimeout(() => {
+      const league = LEAGUES.find(l => l.id === selectedLeague);
+      const nextPenalty = currentPenalty + 1;
+      
+      if (nextPenalty >= 5) {
+        // Match over
+        endMatch();
+      } else {
+        // Next penalty
+        setCurrentPenalty(nextPenalty);
+        setShotResult(null);
+        setBallPosition({ x: 50, y: 85 });
+        setBallAnimating(false);
+        setBallVisible(true);
+        setKeeperState('ready');
+        setKeeperPosition(0);
+        
+        // Reset grid state
+        setPhase('aim');
+        setSelectedZone(null);
+        setTimingResult(null);
+        
+        // Maybe change keeper
+        if (Math.random() > 0.5) {
+          const newKeeper = league.keepers[Math.floor(Math.random() * league.keepers.length)];
+          setCurrentKeeper(newKeeper);
+        }
+      }
+    }, 1500);
+  };
+  
   // End match
   const endMatch = () => {
     const matchStars = goals >= 5 ? 3 : goals >= 4 ? 2 : goals >= 3 ? 1 : 0;
@@ -1212,6 +1199,8 @@ const handleShotResult = (result) => {
       </div>
     );
   }
+  
+  // Character Select Screen
   if (screen === 'select-character') {
     const league = LEAGUES.find(l => l.id === selectedLeague);
     
@@ -1320,12 +1309,14 @@ const handleShotResult = (result) => {
     );
   }
   
-  // Match Screen with Grid Mechanics
+  // Match Screen
   if (screen === 'match') {
     const league = LEAGUES.find(l => l.id === selectedLeague);
+    const keeper = KEEPERS[currentKeeper];
     
     return (
       <div className="fixed inset-0 overflow-hidden">
+        {/* Stadium Background */}
         <Stadium league={selectedLeague} />
         
         {/* HUD */}
@@ -1333,7 +1324,9 @@ const handleShotResult = (result) => {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-white/70 text-xs">{league.name}</div>
-              <div className="text-white font-bold">Straffe {currentPenalty + 1}/5</div>
+              <div className="text-white font-bold">
+                Straffe {currentPenalty + 1}/5
+              </div>
             </div>
             <div className="text-center">
               <div className="text-4xl font-black text-white">{goals}</div>
@@ -1344,70 +1337,27 @@ const handleShotResult = (result) => {
                 {[...Array(5)].map((_, i) => (
                   <div 
                     key={i}
-                    className={\`w-3 h-3 rounded-full \${i < goals ? 'bg-green-500' : i < currentPenalty ? 'bg-red-500' : 'bg-white/30'}\`}
+                    className={`w-3 h-3 rounded-full ${i < goals ? 'bg-green-500' : i < currentPenalty ? 'bg-red-500' : 'bg-white/30'}`}
                   />
                 ))}
               </div>
             </div>
           </div>
-          
-          {phase !== 'result' && (
-            <div className="mt-2 flex justify-center">
-              <div 
-                className="px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"
-                style={{ backgroundColor: POWERS[CHARACTERS[selectedCharacter].power].color }}
-              >
-                <span>{POWERS[CHARACTERS[selectedCharacter].power].emoji}</span>
-                <span>{POWERS[CHARACTERS[selectedCharacter].power].name}</span>
-              </div>
-            </div>
-          )}
         </div>
         
         {/* Goal Area */}
-        <div className="absolute top-[18%] left-[10%] right-[10%] h-[32%]">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[80%]">
           <Goal>
-            {phase === 'aim' && (
-              <TapZones 
-                onZoneTap={handleZoneTap}
-                disabled={false}
-                selectedZone={selectedZone}
-              />
-            )}
-            
-            {phase === 'timing' && selectedZone && (
-              <TimingRing 
-                zone={selectedZone}
-                timingRing={timingRing}
-                onTap={handleTimingTap}
-                disabled={false}
-              />
-            )}
-            
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
-              <KeeperSVG 
-                type={currentKeeper}
-                state={keeperState}
-                position={keeperPosition}
-                stunned={keeperStunned}
-              />
-            </div>
+            <KeeperSVG 
+              type={currentKeeper}
+              state={keeperState}
+              position={keeperPosition}
+              stunned={keeperStunned}
+            />
           </Goal>
         </div>
         
-        {/* Pitch */}
-        <div className="absolute bottom-0 left-0 right-0 h-[55%] bg-gradient-to-t from-green-700 via-green-600 to-green-500">
-          <div 
-            className="absolute inset-0 opacity-30"
-            style={{
-              backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 30px, rgba(0,0,0,0.1) 30px, rgba(0,0,0,0.1) 60px)'
-            }}
-          />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[85%] h-[60%] border-2 border-white/40 border-t-0" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[50%] h-[25%] border-2 border-white/40 border-t-0" />
-          <div className="absolute bottom-[15%] left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white/60" />
-        </div>
-        
+        {/* Ball */}
         <Ball 
           x={ballPosition.x}
           y={ballPosition.y}
@@ -1416,19 +1366,20 @@ const handleShotResult = (result) => {
           animating={ballAnimating}
         />
         
+        {/* Result Overlay */}
         {phase === 'result' && shotResult && (
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40">
             <div className="text-center">
-              <div className={\`text-6xl font-black mb-2 \${shotResult === 'goal' ? 'text-green-400' : 'text-red-400'}\`}>
+              <div className={`text-6xl font-black mb-2 ${shotResult === 'goal' ? 'text-green-400' : 'text-red-400'}`}>
                 {shotResult === 'goal' ? 'MÅL!' : shotResult === 'saved' ? 'REDDET!' : 'BOM!'}
               </div>
               {timingResult && (
-                <div className={\`text-xl font-bold mb-4 \${
+                <div className={`text-xl font-bold mb-4 ${
                   timingResult === 'perfect' ? 'text-green-400' :
                   timingResult === 'good' ? 'text-lime-400' :
                   timingResult === 'ok' ? 'text-yellow-400' :
                   'text-red-400'
-                }\`}>
+                }`}>
                   {timingResult === 'perfect' ? '⭐ PERFEKT!' :
                    timingResult === 'good' ? '👍 BRA!' :
                    timingResult === 'ok' ? '😐 OK' :
@@ -1443,9 +1394,38 @@ const handleShotResult = (result) => {
             </div>
           </div>
         )}
-      </div>
-    );
-  }
+        
+        {/* Shot Result Overlay */}
+        {shotResult && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50">
+            <div className={`text-6xl font-black animate-bounce
+              ${shotResult === 'goal' ? 'text-green-500' : 'text-red-500'}
+            `}>
+              {shotResult === 'goal' ? 'MÅL! 🎉' : shotResult === 'saved' ? 'REDDET! 😤' : 'UTENFOR! 😭'}
+            </div>
+          </div>
+        )}
+        
+        {/* Swipe Zone */}
+        {/* Grid Zones - Tap to aim */}
+            {phase === 'aim' && (
+              <TapZones 
+                onZoneTap={handleZoneTap}
+                disabled={false}
+                selectedZone={selectedZone}
+              />
+            )}
+            
+            {/* Timing Ring - Tap for timing */}
+            {phase === 'timing' && selectedZone && (
+              <TimingRing 
+                zone={selectedZone}
+                timingRing={timingRing}
+                onTap={handleTimingTap}
+                disabled={false}
+              />
+            )}
+        
         {/* Character Power Indicator */}
         <div className="absolute bottom-4 left-4 z-20">
           <div 
@@ -1544,9 +1524,6 @@ const handleShotResult = (result) => {
     );
   }
   
-  return null;
-};
-
   return null;
 };
 
