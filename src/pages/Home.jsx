@@ -28,6 +28,18 @@ const Home = () => {
       shadowColor: 'shadow-yellow-500/20',
       path: '/game',
       features: ['⚽ Straffespill', '🎴 Samlekort', '🏆 Highscore']
+    },
+    {
+      id: 'prototype',
+      title: 'STRAFFE PROTOTYPE',
+      emoji: '🎯',
+      description: 'Test ny straffespill-mekanikk',
+      gradient: 'from-gray-500 via-gray-600 to-gray-700',
+      hoverGradient: 'from-gray-400 via-gray-500 to-gray-600',
+      borderColor: 'border-gray-500/30',
+      shadowColor: 'shadow-gray-500/10',
+      path: '/prototype',
+      features: ['🎮 Grid-basert', '⏱️ Timing', '🧪 Beta']
     }
   ];
 
@@ -73,7 +85,7 @@ const Home = () => {
         </div>
 
         {/* Game Cards */}
-        <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 px-2">
+        <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 px-2">
           {games.map((game) => (
             <button
               key={game.id}
