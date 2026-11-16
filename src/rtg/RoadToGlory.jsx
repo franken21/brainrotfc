@@ -188,7 +188,7 @@ function Prematch({c,onStart,onTactic,go}){
  const best=styles.map(st=>({style:st,...tacticalMatchup(st.id,rivalStyle)})).sort((a,b)=>b.advantage-a.advantage)[0];
  return <div className="rtg-flow rtg-prematch">
   <DivisionBanner c={c} compact/>
-  <div className="rtg-prematch-heading"><span className="rtg-eyebrow">ROUND {f.round} / 18 · {f.home?'AT HOME':'AWAY AT '+(f.opp.venue||'THE STADIUM').toUpperCase()}</span><h1>{f.opp.nickname||'The next challenge'}.</h1><p>{DIVISION_CONFIG[c.tier].description}</p><div className="rtg-matchday-bonuses"><span>◆ FORM {boost.confidence>=0?'+':''}{boost.confidence}</span><span>♬ CROWD +{boost.crowd}</span><span>★ REP {c.reputation}</span></div></div>
+  <div className="rtg-prematch-heading rtg-prematch-heading-primary"><button type="button" className="rtg-button primary rtg-top-kickoff" onClick={onStart}>▶ PLAY FULL MATCH →</button><span className="rtg-eyebrow">ROUND {f.round} / 18 · {f.home?'AT HOME':'AWAY AT '+(f.opp.venue||'THE STADIUM').toUpperCase()}</span><h1>{f.opp.nickname||'The next challenge'}.</h1><p>{DIVISION_CONFIG[c.tier].description}</p><div className="rtg-matchday-bonuses"><span>◆ FORM {boost.confidence>=0?'+':''}{boost.confidence}</span><span>♬ CROWD +{boost.crowd}</span><span>★ REP {c.reputation}</span></div></div>
   <div className="rtg-matchscore rtg-matchscore-before"><div><Badge club={club}/><strong>{c.club}</strong><small>ATT {stats.attack} / DEF {stats.defence}</small></div><span>VS</span><div><RivalBadge rival={f.opp}/><strong>{f.opp.name}</strong><small>{Math.round(f.opp.strength)} OVR · {rivalStyle.toUpperCase()}</small></div></div>
   <div className="rtg-opponent-scout">
    <div className="rtg-opponent-mark" style={{'--rival-ink':f.opp.color||'#9eaeaa'}}>◈</div>
