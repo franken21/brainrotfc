@@ -222,8 +222,8 @@ function saleable(c,p){
 }
 // Sales occur only after Round 18. Values are capped well below the cost of a
 // top signing so the transfer market cannot become trivial.
-const SALE_CAPS=[95000,850000,5900000];
-const RESERVE_CAPS=[35000,270000,1800000];
+const SALE_CAPS=[80000,700000,5200000];
+const RESERVE_CAPS=[25000,200000,1250000];
 function saleValue(c,p){
  const cap=SALE_CAPS[c.tier];
  const quality=clamp((p.ovr-(c.tier===0?46:c.tier===1?58:71))/29,.18,1);
