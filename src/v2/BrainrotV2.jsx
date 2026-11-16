@@ -71,12 +71,13 @@ function PlayerCard({player,owned=false,active=false,onClick,compact=false}){
 function NavButton({id,icon,title,active,onClick,detail}){
  return <button className={'v2-nav-btn '+(active?'active':'')} onClick={()=>onClick(id)} type="button"><span className="v2-nav-ico">{icon}</span><span className="v2-nav-copy"><strong>{title}</strong><small>{detail}</small></span><span className="v2-nav-chevron">›</span></button>;
 }
-function GoalScene({aim,setAim,league,flight,phase,player}){
+function GoalScene({aim,setAim,setAimLocked,aimLocked,league,flight,phase,player}){
  const goalRef=useRef();
  const point=e=>{
   if(phase!=='ready'||!goalRef.current)return;
   const r=goalRef.current.getBoundingClientRect();
   setAim({x:Math.max(.05,Math.min(.95,(e.clientX-r.left)/r.width)),y:Math.max(.07,Math.min(.93,(e.clientY-r.top)/r.height))});
+  setAimLocked(true);
  };
  const shot=flight?.shot;
  const left=shot?shot.x:aim.x,top=shot?shot.y:aim.y;
@@ -87,12 +88,13 @@ function GoalScene({aim,setAim,league,flight,phase,player}){
    <div className="v2-banners"><span>BRAINROT!</span><span>⚡ NO FEAR · ALL FOOTBALL ⚡</span><span>FC FOREVER</span></div>
    <div className="v2-ground"><div className="v2-penalty-arc"/><div className="v2-penalty-line"/></div>
    <div className="v2-net-shadow"/>
-   <div className="v2-goal" ref={goalRef} onPointerMove={point} onPointerDown={point} role="group" aria-label="Aim at a spot in the goal">
+   <div className="v2-goal" ref={goalRef} onPointerDown={point} role="group" aria-label="Aim at a spot in the goal">
      <div className="v2-goal-net"/>
      <div className="v2-goal-top"/>
-     {phase==='ready'&&<div className="v2-aim-target" style={{left:(aim.x*100)+'%',top:(aim.y*100)+'%'}}><div className="v2-target-ring"/><div className="v2-target-dot"/></div>}
+     {phase==='ready'&&aimLocked&&<div className="v2-aim-target" style={{left:(aim.x*100)+'%',top:(aim.y*100)+'%'}}><div className="v2-target-ring"/><div className="v2-target-dot"/></div>}
+     {phase==='ready'&&!aimLocked&&<div className="v2-aim-callout">🎯<strong>CLICK A CORNER TO AIM</strong><small>Your target stays right where you put it.</small></div>}
      <Keeper x={phase==='flight'||phase==='result'?(shot?.frozen ? 0.5 : (shot?.keeperX ?? 0.5)):.5} y={phase==='flight'||phase==='result'?shot?.keeperY??.65:.65} dive={(phase==='flight'||phase==='result')&&!shot?.frozen} league={LEAGUES.indexOf(league)}/>
-     <div className="v2-goal-hint">{phase==='ready'?'MOVE YOUR AIM · PICK A CORNER':' '}</div>
+     <div className="v2-goal-hint">{phase==='ready'?(aimLocked?'TARGET LOCKED · CLICK TO RE-AIM':'CHOOSE YOUR SPOT'):' '}</div>
    </div>
    <div className="v2-spot"/>
    {phase==='flight'&&<Ball className="v2-flying-ball" style={{'--shot-x':left,'--shot-y':top,animationDuration:player.style==='Rocket'?'.58s':'.85s'}}/>}
@@ -115,8 +117,9 @@ function App(){
  const navigate=useNavigate();
  const [save,setSave]=useState(loadSave);
  const [view,setView]=useState('play');
- const [match,setMatch]=useState(null);
- const [phase,setPhase]=useState('intro');
+ const [match,setMatch]=useState(()=>({shots:[],rivals:[]}));
+ const [phase,setPhase]=useState('ready');
+ const [aimLocked,setAimLocked]=useState(false);
  const [aim,setAim]=useState({x:.74,y:.25});
  
  const timingRef=useRef(.5);
@@ -154,7 +157,7 @@ function App(){
    setAim({x:.73,y:.24});setPhase('ready');setView('play');
  };
  const shoot=useCallback(()=>{
-   if(phase!=='ready'||!match)return;
+   if(phase!=='ready'||!match||!aimLocked)return;
    const shot=resolveShot(aim,timingRef.current,player,league);
    const rival=rivalKick(league);
    Sound({type:shot.outcome==='GOAL'?'goal':'miss',enabled:sound});
@@ -163,7 +166,7 @@ function App(){
      setMatch(prev=>({...prev,shots:[...prev.shots,shot],rivals:[...prev.rivals,rival]}));
      setLast(shot);setPhase('result');
    },900);
- },[phase,match,aim,player,league,sound]);
+ },[phase,match,aim,aimLocked,player,league,sound]);
  const advance=()=>{
    if(!match||phase!=='result')return;
    const goals=match.shots.filter(s=>s.outcome==='GOAL').length;
@@ -178,8 +181,13 @@ function App(){
      setPhase('finished');
      return;
    }
-   setLast(null);setFlight(null);setAim({x:.73,y:.24});setPhase('ready');
+   setLast(null);setFlight(null);setPhase('ready');
  };
+ useEffect(()=>{
+    if(phase!=='result'||view!=='play')return;
+    const next=setTimeout(()=>advance(),1850);
+    return ()=>clearTimeout(next);
+ },[phase,view,match]);
  useEffect(()=>{
   const handle=e=>{
    if(view!=='play'||e.target?.tagName==='INPUT')return;
@@ -188,6 +196,7 @@ function App(){
    if(phase==='ready'&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){
       e.preventDefault();
       setAim(a=>({x:Math.max(.05,Math.min(.95,a.x+(e.key==='ArrowRight'?delta:e.key==='ArrowLeft'?-delta:0))),y:Math.max(.07,Math.min(.93,a.y+(e.key==='ArrowDown'?delta:e.key==='ArrowUp'?-delta:0)))}));
+      setAimLocked(true);
    }
   };
   window.addEventListener('keydown',handle);return()=>window.removeEventListener('keydown',handle);
@@ -237,7 +246,7 @@ function App(){
              <div className="v2-arena-top"><span><i className="v2-dot"/> {league.venue}</span><strong>{match?'MATCH DAY':'READY FOR KICK-OFF'}</strong></div>
              <div className="v2-arena-body">
                {match&&<MatchStrip match={match}/>}
-               <GoalScene aim={aim} setAim={setAim} league={league} flight={flight} phase={phase} player={player}/>
+               <GoalScene aim={aim} setAim={setAim} setAimLocked={setAimLocked} aimLocked={aimLocked} league={league} flight={flight} phase={phase} player={player}/>
                {phase==='intro'&&<div className="v2-intro-overlay"><div className="v2-overlay-logo">⚽</div><span>THE NEXT CHALLENGE</span><h2>{league.name}</h2><p>Five kicks. One rival. Your chance to shine.</p><button className="v2-button-primary" onClick={startMatch}>START SHOOTOUT <b>↗</b></button></div>}
                {phase==='result'&&last&&<div className={'v2-shot-overlay '+(last.outcome==='GOAL'?'scored':'not-scored')}>
                  <span>{last.grade} RELEASE</span><h2>{last.outcome==='GOAL'?'GOOOAL!':last.outcome==='SAVED'?'WHAT A SAVE!':'WIDE OF THE MARK!'}</h2><p>{last.outcome==='GOAL'?'Top bins energy. Keep it going!':last.outcome==='SAVED'?'The keeper read that one. Try a corner.':'Find your rhythm and stay inside the posts.'}</p><button className="v2-button-primary" onClick={advance}>{match.shots.length>=5?'SEE RESULT / NEXT KICK':'NEXT KICK'} <b>→</b></button>
@@ -245,9 +254,9 @@ function App(){
                {phase==='finished'&&summary&&<div className="v2-summary-overlay"><div className="v2-overlay-logo">{summary.won?'🏆':'💪'}</div><span>MATCH COMPLETE</span><h2>{summary.won?'VICTORY!':summary.goals===summary.opponent?'IT’S A DRAW':'SO CLOSE!'}</h2><p>{summary.goals} – {summary.opponent} · +{summary.coins} COINS</p>{summary.promoted&&<div className="v2-promoted">✨ PROMOTED TO {LEAGUES[save.league].name.toUpperCase()}!</div>}<div className="v2-summary-actions"><button className="v2-button-primary" onClick={startMatch}>PLAY AGAIN ↗</button><button className="v2-button-ghost" onClick={()=>{setPhase('intro');setMatch(null);setView('packs');}}>OPEN PACKS</button></div></div>}
              </div>
              <div className="v2-arena-controls">
-               <div className="v2-aim-copy"><strong>01 / AIM</strong><span>Tap or move over the goal to place your target.</span></div>
-               <div className="v2-timing-controls"><div className="v2-meter-copy"><strong>02 / TIME IT</strong><span>Hit the bright green sweet spot</span></div><div className="v2-meter" aria-label="Moving timing indicator with green centre sweet spot"><div className="v2-meter-sweet"/><div className="v2-meter-perfect"/><div className="v2-meter-indicator" ref={meterIndicatorRef} style={{left:'50%'}}/></div><div className="v2-meter-labels"><span>EARLY</span><span>PERFECT</span><span>LATE</span></div></div>
-               <button className="v2-shoot-btn" disabled={phase!=='ready'} onClick={shoot}>⚽ <span>SHOOT!</span><small>SPACE / TAP</small></button>
+               <div className="v2-aim-copy"><strong>{aimLocked?'✓ AIM LOCKED':'1 · PICK YOUR SPOT'}</strong><span>Click a corner to lock your shot. Click again to change it.</span></div>
+               <div className="v2-timing-controls"><div className="v2-meter-copy"><strong>2 · TIME YOUR SHOT</strong><span>Press SHOOT when the marker reaches green.</span></div><div className="v2-meter" aria-label="Moving timing indicator with green centre sweet spot"><div className="v2-meter-sweet"/><div className="v2-meter-perfect"/><div className="v2-meter-indicator" ref={meterIndicatorRef} style={{left:'50%'}}/></div><div className="v2-meter-labels"><span>EARLY</span><span>PERFECT</span><span>LATE</span></div></div>
+               <button className="v2-shoot-btn" disabled={phase!=='ready'||!aimLocked} onClick={shoot}>⚽ <span>{aimLocked?'SHOOT!':'AIM FIRST'}</span><small>SPACE / TAP</small></button>
              </div>
            </section>
            <aside className="v2-game-right">
