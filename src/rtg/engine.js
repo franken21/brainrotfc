@@ -41,7 +41,10 @@ const RIVAL_POOLS = [
   ['Riverton City','counter','Rapid wide breaks','#8ddce3','The River Rush','Riverton Quay'],
   ['Eastwick Albion','press','Hunts the ball','#f4a59a','Eastwick Fire','Eastwick Field'],
   ['Millgate FC','balanced','Disciplined midfield','#c2c7a9','The Millworkers','The Mill Ground'],
-  ['Dunmere Wanderers','counter','Long balls and pace','#a5a9de','The Wanderers','Dunmere Heath']
+  ['Dunmere Wanderers','counter','Long balls and pace','#a5a9de','The Wanderers','Dunmere Heath'],
+  ['Lowtide Albion','counter','Fast coastal breaks','#65c6ad','The Undertow','Lowtide Bay'],
+  ['Hollowfield FC','balanced','Stubborn local favourites','#d3c598','The Hollow','Hollowfield End'],
+  ['Marshford Town','press','Chaotic high pressing','#d6a8dc','The Marsh Men','Marshford Field']
  ],
  [
   ['Granite County','balanced','Defensive powerhouse','#a7b1ae','The Stonewall','Granite Bowl'],
@@ -52,7 +55,10 @@ const RIVAL_POOLS = [
   ['Dynamo Grove','press','High-energy football','#dcad7e','The Dynamos','Grove Arena'],
   ['Railway Athletic','counter','Direct football','#e5c38b','The Railmen','Railway Park'],
   ['Helmsford FC','balanced','Experienced veterans','#c9b0df','The Helm','Helmsford Arena'],
-  ['Harbourside United','counter','Fast, disciplined counters','#7db0c6','Tidal Wave','Harbourside Stadium']
+  ['Harbourside United','counter','Fast, disciplined counters','#7db0c6','Tidal Wave','Harbourside Stadium'],
+  ['Coalridge City','balanced','Towering defenders','#b48d82','The Miners','Coalridge Park'],
+  ['Severn Athletic','press','Young relentless runners','#dfbe77','The Severn Storm','Severn Stadium'],
+  ['Marlowe Albion','counter','Dangerous in transition','#91c7bf','The Marlowes','Marlowe Arena']
  ],
  [
   ['Royal Meridian','balanced','Superstar midfield','#d8b5ec','The Royals','Royal Arena'],
@@ -63,10 +69,13 @@ const RIVAL_POOLS = [
   ['Aurora Athletic','counter','Unstoppable transitions','#b8a7ed','The Northern Lights','Aurora Park'],
   ['Imperial Borough','balanced','Patient technical play','#f1a2c7','The Borough','Imperial Stadium'],
   ['Starlight FC','press','Explosive wings','#d3b2f4','The Stars','Starlight Arena'],
-  ['Vanguard United','counter','Ruthless counterattacks','#a1baec','The Vanguard','Vanguard Palace']
+  ['Vanguard United','counter','Ruthless counterattacks','#a1baec','The Vanguard','Vanguard Palace'],
+  ['Eclipse United','press','Blazing pace on the wings','#b2a1f1','The Eclipse','Eclipse Park'],
+  ['Solstice FC','balanced','Elite midfield technicians','#f4d58a','The Sun Kings','Solstice Arena'],
+  ['Ironcrest Royal','counter','Clinical deep-block football','#a2d6e8','The Iron Crown','Royal Crest Stadium']
  ]
 ];
-const RIVAL_NAMES=RIVAL_POOLS[0].map(x=>x[0]);
+const RIVAL_NAMES=RIVAL_POOLS[0].slice(0,9).map(x=>x[0]);
 const FIRST=['Leo','Milo','Ezra','Noah','Kai','Tariq','Oscar','Enzo','Arlo','Nico','Felix','Hugo','Luca','Ibrahim','Theo','Anton','Rafael','Idris','Jude','Mason','Elias','Alex','Mateo','Finn','Ruben','Ollie','Sami','Ben','Andre','Jasper'];
 const LAST=['Varela','Hartmann','Nilsen','Santos','Morales','Reed','Almeida','Fischer','Berg','Okoro','Haddad','Silva','Bennett','Hughes','Costa','Marquez','Svensson','Khan','Cole','Adebayo','Moretti','Kovacs','Dahl','Romero','Torres','Solberg','Wright','Bishop','Fowler','Lind'];
 const CANDIDATE_ROLES=['ST','CB','CAM','GK','RW','CM','LB','LW','RB'];
@@ -106,7 +115,9 @@ function startTable(rivals){
  return [{id:'you',name:'Your club',p:0,w:0,d:0,l:0,gf:0,ga:0,pts:0},...rivals.map(r=>({id:r.id,name:r.name,p:0,w:0,d:0,l:0,gf:0,ga:0,pts:0}))];
 }
 function rivalsFor(c){
- return RIVAL_POOLS[c.tier].map(([name,style,trait,color,nickname,venue],i)=>({id:'r'+i,name,style,trait,color,nickname,venue,
+ const pool=RIVAL_POOLS[c.tier].slice();
+ for(let i=pool.length-1;i>0;i--){const j=int(c,0,i);[pool[i],pool[j]]=[pool[j],pool[i]];}
+ return pool.slice(0,9).map(([name,style,trait,color,nickname,venue],i)=>({id:'r'+i,name,style,trait,color,nickname,venue,
   strength:clamp((c.tier===0?52:c.tier===1?65:78)+i*1.2+int(c,-5,5),45,93)}));
 }
 function generateMarket(c){
