@@ -180,7 +180,7 @@ function Almanac({game,onImport}){
   <div className="rtg-savebox"><div><strong>Your save belongs to you.</strong><p>Everything saves automatically in this browser. Export a backup to move it to another device. No login, no server, no tracking.</p></div><div className="rtg-save-actions"><button type="button" className="rtg-button secondary" onClick={exportSave}>↓ EXPORT SAVE</button><button type="button" className="rtg-button secondary" onClick={()=>fileRef.current?.click()}>↑ IMPORT SAVE</button><input ref={fileRef} type="file" accept=".json,application/json" onChange={importSave} hidden/></div></div>
  </div>;
 }
-function Prematch({c,onStart,onTactic,go}){
+function Prematch({c,onStart,onTactic,onQuick,go}){
  const f=nextFixture(c),club=CLUBS.find(x=>x.id===c.id),stats=profile(c);
  if(!f)return null;
  const styles=[
@@ -196,7 +196,7 @@ function Prematch({c,onStart,onTactic,go}){
       <span className="rtg-plan-icon">{st.icon}</span><strong>{st.title}</strong><b>{st.effect}</b><small>{st.foot}</small>{c.tactic===st.id&&<span className="rtg-plan-selected">✓ SELECTED</span>}
     </button>)}</div>
    </section>
-  <div className="rtg-ready-kickoff"><div><span className="rtg-eyebrow">02 / THE REFEREE IS READY</span><strong>First half: 0′ → 45′</strong><p>We'll play the first half, show you the score and chances, then you'll make a halftime decision.</p></div><button type="button" className="rtg-button primary xl" onClick={onStart}>▶ PLAY FIRST HALF →</button></div>
+  <div className="rtg-ready-kickoff"><div><span className="rtg-eyebrow">02 / THE REFEREE IS READY</span><strong>First half: 0′ → 45′</strong><p>We'll play the first half, show you the score and chances, then you'll make a halftime decision.</p></div><div className="rtg-kickoff-actions"><button type="button" className="rtg-button primary xl" onClick={onStart}>▶ PLAY FIRST HALF →</button><button type="button" className="rtg-button ghost small" onClick={onQuick}>QUICK SIM ALL 90′</button></div></div>
   <button type="button" className="rtg-textbutton rtg-prematch-back" onClick={()=>go('home')}>← BACK TO CLUBHOUSE</button>
  </div>;
 }
@@ -288,25 +288,30 @@ export default function RoadToGlory(){
  const advance=()=>{act(advanceSeason);go('home');};
  const finish=choice=>{act(s=>finishMatch(s,choice));go('result');};
  const continueReport=()=>{const next=c.seasonComplete?'season':c.checkpoint?'checkpoint':'home';act(dismissReport);go(next);};
- const choose=choice=>{act(s=>chapterChoice(s,choice));go('home');};
+ const choose=choice=>{act(s=>chapterChoice(s,choice));go('chapter-reward');};
+ const startFirstHalf=()=>{act(kickoff);go('match');};
+ const quickMatch=()=>{act(quickSim);go('result');};
  const archive=()=>{act(archiveCareer);go('home');};
  const importGame=s=>{setGame(s);go('home');setNotice('Save imported successfully.');};
  if(!c)return <Landing legacy={game.legacy} onStart={start}/>;
  const club=CLUBS.find(x=>x.id===c.id);
  let activeView=c.report&&view==='result'?'result':c.match&&view==='match'?'match':view;
- if(!['home','market','squad','league','almanac','result','match','checkpoint','season'].includes(activeView))activeView='home';
+ if(!['home','market','squad','league','almanac','result','match','prematch','signing','checkpoint','chapter-reward','season'].includes(activeView))activeView='home';
  if(activeView==='result'&&!c.report)activeView='home';
  if(activeView==='match'&&!c.match)activeView='home';
+ if(activeView==='prematch'&&(c.match||c.report||c.checkpoint||c.seasonComplete))activeView='home';
+ if(activeView==='signing'&&!c.lastSigning)activeView='home';
+ if(activeView==='chapter-reward'&&!c.lastChoice)activeView='home';
  if(activeView==='checkpoint'&&!c.checkpoint)activeView='home';
  if(activeView==='season'&&!c.seasonComplete)activeView='home';
- const special=['result','match','checkpoint','season'].includes(activeView);
+ const special=['prematch','result','match','checkpoint','chapter-reward','signing','season'].includes(activeView);
  return <div className="rtg-app"><aside className="rtg-sidebar">
     <a className="rtg-brand" href="/"><span className="rtg-brand-symbol">R<span>✦</span></span><div><strong>ROAD TO GLORY</strong><small>POCKET EDITION</small></div></a>
     <div className="rtg-sideclub"><Badge club={club}/><div><span>THE MANAGER OF</span><strong>{c.club}</strong><small>{DIVISIONS[c.tier]} · S{c.season}</small></div></div>
     <div className="rtg-sidelabel">THE CLUB</div><nav className="rtg-nav">{MENU.map(([id,icon,label])=><button type="button" key={id} className={view===id?'active':''} onClick={()=>go(id)}><span>{icon}</span>{label}{id==='market'&&!c.signed&&!c.checkpoint&&!c.report&&<i/>}</button>)}</nav>
     <div className="rtg-sidebar-bottom"><span>THE LONG ROAD</span><div className="rtg-season-dots">{Array.from({length:5},(_,i)=><i key={i} className={i<c.season?'passed':i===c.season-1?'active':''}/>)}</div><strong>Season {c.season} of 5</strong><small>Build something they'll remember.</small><a href="/" className="rtg-exit">← Back to Brainrot FC</a></div>
    </aside>
-   <div className="rtg-shell"><header className="rtg-topbar"><div><span className="rtg-topbar-issue">THE FOOTBALL CHRONICLE</span><span className="rtg-topbar-title">S{c.season} · MATCHWEEK {Math.min(18,c.round+1)} / 18</span></div><div className="rtg-topbar-right"><span className="rtg-live-dot"/> ALL LOCAL · AUTO SAVED <span className="rtg-topbar-divider"/> <b>{formatCash(c.budget)}</b></div></header>
+   <div className="rtg-shell"><header className="rtg-topbar"><div><span className="rtg-topbar-issue">THE FOOTBALL CHRONICLE</span><span className="rtg-topbar-title">S{c.season} · MATCHWEEK {Math.min(18,c.round+1)} / 18</span></div><div className="rtg-topbar-right"><span className="rtg-live-dot"/> <span className="rtg-topbar-save">AUTO SAVED</span> <span className="rtg-topbar-divider"/> <b className="rtg-topbar-fans">♬ {c.supporters.toLocaleString('en-GB')} FANS</b> <span className="rtg-topbar-divider"/> <b>{formatCash(c.budget)}</b></div></header>
     {notice&&<div className="rtg-notice" role="status">{notice}<button onClick={()=>setNotice('')}>×</button></div>}
     <main className={'rtg-main '+(special?'rtg-main-special':'')}>
       {activeView==='home'&&<Dashboard c={c} go={go} act={act}/>}
@@ -314,11 +319,14 @@ export default function RoadToGlory(){
       {activeView==='market'&&<Market c={c} act={act} go={go}/>}
       {activeView==='league'&&<League c={c}/>}
       {activeView==='almanac'&&<Almanac game={game} onImport={importGame}/>}
+      {activeView==='prematch'&&<Prematch c={c} onStart={startFirstHalf} onQuick={quickMatch} onTactic={id=>act(s=>chooseTactic(s,id))} go={go}/>}
       {activeView==='match'&&<Match c={c} onFinish={finish}/>}
+      {activeView==='signing'&&<SigningReveal c={c} go={go}/>}
+      {activeView==='chapter-reward'&&<ChapterReward c={c} go={go}/>}
       {activeView==='result'&&<Report c={c} onContinue={continueReport}/>}
       {activeView==='checkpoint'&&<Checkpoint c={c} onPick={choose}/>}
       {activeView==='season'&&<SeasonEnd c={c} onAdvance={advance} onArchive={archive}/>}
-      {!special&&!c.match&&!c.report&&!c.checkpoint&&!c.seasonComplete&&<div className="rtg-tactics"><div><span className="rtg-eyebrow">MATCH PLAN</span><p>Pick your approach before kickoff.</p></div><div className="rtg-tacticbuttons">{Object.entries(TACTICS).map(([id,t])=><button type="button" key={id} className={c.tactic===id?'selected':''} onClick={()=>act(s=>chooseTactic(s,id))} title={t.note}>{t.label}</button>)}</div><button type="button" className="rtg-button secondary" onClick={()=>{act(quickSim);go('result');}}>QUICK SIM NEXT MATCH ↗</button></div>}
+      
     </main><footer className="rtg-footer">ROAD TO GLORY / A FOOTBALL-FIRST ARCADE CAREER <span>YOUR STORY. YOUR RULES.</span></footer>
    </div>
    <nav className="rtg-mobile-nav">{MENU.map(([id,icon,label])=><button key={id} type="button" className={view===id?'active':''} onClick={()=>go(id)}><span>{icon}</span><small>{label}</small></button>)}</nav>
