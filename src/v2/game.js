@@ -76,16 +76,17 @@ export function resolveShot(aim,timing,player,league,random=Math.random){
   const keeperY=reading?Math.max(.17,Math.min(.72,y+(random()-.5)*.20)):.66;
   const distance=Math.hypot((x-keeperX)*1.25,(y-keeperY)*0.8);
   const reach=0.18+league.keeper*0.11;
-  const saveDifficulty=(player.power-50)/200+(player.style==='Finesse'?0.08:0)+(player.style==='Freeze'?0.1:0);
-  const saved=onTarget&&distance<reach&&random()<(0.48+league.keeper*0.36-saveDifficulty-(precision>0.88?0.12:0));
+  const frozen=player.style==='Freeze'&&random()<0.27;
+  const saveDifficulty=(player.power-50)/200+(player.style==='Finesse'?0.08:0)+(player.style==='Rocket'?0.12:0);
+  const saved=onTarget&&!frozen&&distance<reach&&random()<(0.48+league.keeper*0.36-saveDifficulty-(precision>0.88?0.12:0));
   const outcome=!onTarget?'MISS':saved?'SAVED':'GOAL';
   const grade=precision>0.89?'PERFECT':precision>0.68?'GREAT':precision>0.42?'GOOD':'LATE / EARLY';
-  return {x,y,keeperX,keeperY,outcome,precision,grade,aimX:aim.x,aimY:aim.y};
+  return {x,y,keeperX,keeperY,frozen,outcome,precision,grade,aimX:aim.x,aimY:aim.y};
 }
 export function rivalKick(league,random=Math.random){return random()<league.rival;}
-export function settleMatch(save,leagueIndex,won,goals,streak){
+export function settleMatch(save,leagueIndex,won,goals,streak,style=''){
   const league=LEAGUES[leagueIndex];
-  const coins=(won?league.reward:85)+(goals*20);
+  const coins=(won?league.reward:85)+(goals*20)+(style==='Chaos'?50:0);
   const wins=[...save.wins];
   let nextLeague=save.league,promoted=false;
   if(won){
