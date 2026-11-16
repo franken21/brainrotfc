@@ -519,8 +519,29 @@ export function archiveCareer(input){
 export function formatCash(amount){return '£'+(amount>=1000000?(amount/1000000).toFixed(2)+'m':Math.round(amount/1000)+'k');}
 export function ordinal(n){return n+(n%10===1&&n!==11?'st':n%10===2&&n!==12?'nd':n%10===3&&n!==13?'rd':'th');}
 export function migrateState(s){
- if(!s||s.version!==VERSION||!s.career)return s;
+ if(!s||s.version!==VERSION||!s.legacy)return s;
+ if(!Array.isArray(s.legacy.trophies))s.legacy.trophies=[];
+ const addHistoric=(target,run,club,results)=>{
+  for(const result of results||[]){
+   if(result.position!==1)continue;
+   const tier=DIVISIONS.indexOf(result.division);
+   if(tier<0||!Number.isInteger(result.season))continue;
+   const award={id:'run-'+run+'-season-'+result.season+'-title',icon:tier===2?'👑':'🏆',
+    kind:'champion',label:tier===2?'Premier Crown':'Champion of '+DIVISIONS[tier],
+    division:DIVISIONS[tier],tier,season:result.season,club,run};
+   if(!target.some(x=>x.id===award.id))target.push(award);
+  }
+ };
+ // Reconstruct genuine first-place awards from old career-history ledgers.
+ for(const run of s.legacy.runs||[])addHistoric(s.legacy.trophies,run.id,run.club,run.results);
+ if(!s.career)return s;
  const c=s.career;
+ if(!Array.isArray(c.trophies))c.trophies=[];
+ addHistoric(c.trophies,c.run,c.club,c.careerResults);
+ if(c.seasonComplete&&seasonSummary(c).position===1){
+  addHistoric(c.trophies,c.run,c.club,[{position:1,season:c.season,division:DIVISIONS[c.tier]}]);
+  c.currentTrophy=c.trophies.find(x=>x.season===c.season)||null;
+ }
  // First prototype had no fan/reputation/matchday checklist fields.
  if(typeof c.supporters!=='number')c.supporters=c.id==='seabrook'?1100:c.id==='ironvale'?780:920;
  if(typeof c.momentum!=='number')c.momentum=50;
