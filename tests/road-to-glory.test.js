@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
  freshState,startCareer,CLUBS,ROLES,FIXTURES,validState,lineup,teamRating,
- signPlayer,scoutPlayer,chooseTactic,transferPreview,passMarket,migrateState,clubBoost,kickoff,finishMatch,quickSim,dismissReport,
+ signPlayer,scoutPlayer,chooseTactic,transferPreview,passMarket,migrateState,clubBoost,MAX_SQUAD, DIVISION_CONFIG, sellPlayer, growthWatch,tacticalMatchup,kickoff,finishMatch,quickSim,dismissReport,
  chapterChoice,advanceSeason,archiveCareer,standings,seasonSummary
 } from '../src/rtg/engine.js';
 
@@ -62,7 +62,7 @@ test('deterministic run and full five-season archive survives JSON readback',()=
   let s=startCareer(freshState(),'seabrook',seed);
   for(let season=1;season<=5;season++){
    for(let round=1;round<=18;round++){
-    if(s.career.checkpoint)s=chapterChoice(s,round%2?'attack':'academy');
+    if(s.career.checkpoint)s=chapterChoice(s,round%2 || s.career.roster.length>=MAX_SQUAD?'attack':'academy');
     if(s.career.market&&!s.career.signed&&s.career.budget>s.career.market[0].fee){
      s=signPlayer(s,s.career.market[0].id);
     }
@@ -135,7 +135,7 @@ test('signing creates meaningful readback-safe payoff and closes the window',()=
 });
 test('passing a window, selecting a game plan and changing chapter resets the prep checklist',()=>{
  let s=startCareer(freshState(),'northstar',9999);
- assert.equal(s.career.tacticChosen,false);
+ assert.equal(s.career.tacticChosen,true);
  s=chooseTactic(s,'press');
  assert.equal(s.career.tacticChosen,true);
  assert.equal(s.career.tactic,'press');
@@ -146,7 +146,7 @@ test('passing a window, selecting a game plan and changing chapter resets the pr
  assert.equal(s.career.checkpoint,true);
  s=chapterChoice(s,'attack');
  assert.equal(s.career.windowPassed,false);
- assert.equal(s.career.tacticChosen,false);
+ assert.equal(s.career.tacticChosen,true);
  assert.ok(s.career.lastChoice.message.includes('masterclass'));
  assert.equal(s.career.market.length,5);
  assert.ok(validState(s));
@@ -209,4 +209,109 @@ test('winning momentum and a bigger home crowd improve actual match strength',()
  assert.ok(home.crowd>neutral.crowd);
  assert.equal(away.crowd,0);
  assert.equal(away.confidence,home.confidence);
+});
+
+
+test('each division has its own rivals, stadiums, colours and styles',()=>{
+ let s=startCareer(freshState(),'northstar',913);
+ const seen=[];
+ for(let tier=0;tier<3;tier++){
+  if(tier){
+   s.career.tier=tier;
+   // Advancing to the next division generates a new football world.
+   s.career.rivals=Array.from({length:9},()=>({}));
+   // Recreate the league through actual season transition instead of inventing fixture results.
+   let next=startCareer(freshState(),'northstar',913);
+   next.career.tier=tier;
+   // Existing public engine has a start-of-season transition; use 18 real games.
+   for(let round=0;round<18;round++){
+    if(next.career.checkpoint)next=chapterChoice(next,'defence');
+    next=quickSim(next);next=dismissReport(next);
+   }
+   assert.equal(next.career.seasonComplete,true);
+   next.career.table.find(x=>x.id==='you').pts=100;
+   next=advanceSeason(next);
+   s=next;
+   if(tier===2){
+    // Advance once more to the top level.
+    for(let round=0;round<18;round++){
+      if(s.career.checkpoint)s=chapterChoice(s,'defence');
+      s=quickSim(s);s=dismissReport(s);
+    }
+    s.career.table.find(x=>x.id==='you').pts=100;
+    s=advanceSeason(s);
+   }
+  }
+  seen.push({division:DIVISION_CONFIG[s.career.tier]?.key,names:s.career.rivals.map(x=>x.name),styles:s.career.rivals.map(x=>x.style)});
+  assert.equal(new Set(s.career.rivals.map(x=>x.name)).size,9);
+  assert.ok(s.career.rivals.every(x=>x.venue&&x.nickname&&x.color&&['balanced','press','counter'].includes(x.style)));
+ }
+ assert.equal(new Set(seen.map(x=>x.division)).size,3);
+ assert.equal(new Set(seen.map(x=>x.names.join(','))).size,3);
+});
+test('young bench player trains into first team without manual lineup changes',()=>{
+ let s=startCareer(freshState(),'northstar',889);
+ const starter=s.career.roster.find(p=>p.id===lineup(s.career).find(p=>p.role==='ST').id);
+ starter.age=29;starter.potential=starter.ovr;
+ const young={...starter,id:'youth-auto',name:'Rising Star',age:17,ovr:starter.ovr-2,
+    potential:Math.min(99,starter.ovr+18),origin:'academy',xp:0,training:0,growth:0,
+    stats:{apps:0,goals:0,assists:0}};
+ s.career.roster.push(young);
+ assert.ok(!lineup(s.career).some(p=>p.id===young.id));
+ let promoted=false;
+ for(let i=0;i<12;i++){
+  if(s.career.checkpoint)s=chapterChoice(s,'defence');
+  s=quickSim(s);
+  if(s.career.report.promotions?.some(x=>x.includes(young.name)))promoted=true;
+  s=dismissReport(s);
+  if(promoted)break;
+ }
+ assert.ok(promoted,'academy graduate earns his place via automatic training');
+ assert.ok(young.ovr<young.potential,'original fixture reference remains unmutated');
+ const signed=s.career.roster.find(p=>p.id===young.id);
+ assert.ok(signed.ovr>young.ovr&&signed.ovr<=signed.potential);
+ assert.ok(lineup(s.career).some(p=>p.id===young.id));
+ assert.ok(signed.stats.apps<=s.career.round);
+ assert.ok(validState(s));
+});
+test('incoming transfer bids offer a real sale-or-keep choice, never forced',()=>{
+ let s=startCareer(freshState(),'ironvale',991);
+ assert.ok(s.career.saleOffers.length>=1);
+ const offer=s.career.saleOffers[0],p=s.career.roster.find(x=>x.id===offer.id);
+ const funds=s.career.budget,n=s.career.roster.length;
+ assert.ok(offer.fee>20000,'offers are worth considering');
+ s=sellPlayer(s,offer.id);
+ assert.equal(s.career.roster.length,n-1);
+ assert.equal(s.career.budget,funds+offer.fee);
+ assert.equal(s.career.lastSale.name,p.name);
+ assert.ok(s.career.sold);
+ assert.deepEqual(sellPlayer(s,offer.id),s,'cannot sell twice within one chapter');
+ assert.ok(validState(s));
+});
+test('persistent club tactics and matchup advantages make scouting useful',()=>{
+ let s=startCareer(freshState(),'northstar',98);
+ s=chooseTactic(s,'counter');
+ for(let i=0;i<3;i++){s=quickSim(s);s=dismissReport(s);}
+ s=chapterChoice(s,'defence');
+ assert.equal(s.career.tactic,'counter');
+ assert.equal(s.career.tacticChosen,true);
+ assert.equal(tacticalMatchup('counter','press').advantage,11);
+ assert.equal(tacticalMatchup('balanced','press').advantage,-7);
+ assert.equal(tacticalMatchup('press','press').advantage,0);
+ assert.ok(validState(s));
+});
+test('full squad blocks new players without blocking actual match progression',()=>{
+ let s=startCareer(freshState(),'seabrook',22);
+ while(s.career.roster.length<MAX_SQUAD){
+  const old=s.career.roster[s.career.roster.length-1];
+  s.career.roster.push({...old,id:'reserve-'+s.career.roster.length,name:'Extra '+s.career.roster.length});
+ }
+ const p=s.career.market[0];
+ assert.deepEqual(signPlayer(s,p.id),s);
+ for(let i=0;i<3;i++){s=quickSim(s);s=dismissReport(s);}
+ assert.equal(s.career.checkpoint,true);
+ assert.deepEqual(chapterChoice(s,'academy'),s);
+ s=chapterChoice(s,'defence');
+ assert.ok(!s.career.checkpoint,'coaching path remains available');
+ assert.ok(validState(s));
 });
