@@ -501,3 +501,19 @@
  .rtg-sale-card h3{font-size:27px}
  .rtg-promotion-alert strong{font-size:22px}
 }
+
+/* Promotion and the first walk into a different football world */
+.rtg-division-intro{max-width:970px;margin:0 auto;gap:20px;padding:14px 0}
+.rtg-division-intro-hero{position:relative;overflow:hidden;border:1px solid var(--rtg-line);background:radial-gradient(circle at 78% 31%,color-mix(in srgb,var(--rtg-lime) 18%,transparent),transparent 40%),var(--rtg-panel);padding:35px;border-radius:9px;min-height:330px;display:flex;align-items:flex-start;flex-direction:column;justify-content:center}
+.rtg-division-intro-icon{position:absolute;right:7%;top:15%;font:900 175px/1 'Barlow Condensed',sans-serif;color:var(--rtg-lime);opacity:.17;transform:rotate(11deg)}
+.rtg-division-intro-hero h1{font-size:clamp(54px,7vw,85px);margin:18px 0;position:relative;z-index:1}
+.rtg-division-intro-hero em{font-style:normal;color:var(--rtg-lime)}
+.rtg-division-intro-hero p{max-width:530px;font-size:14px;color:var(--rtg-muted);line-height:1.65}
+.rtg-division-intro-stats{display:flex;flex-wrap:wrap;gap:9px;margin-top:27px}
+.rtg-division-intro-stats span{color:var(--rtg-lime);border:1px solid var(--rtg-line);border-radius:4px;background:#ffffff0a;font-size:9px;letter-spacing:.11em;font-weight:900;padding:8px 11px}
+.rtg-new-rivals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.rtg-new-rivals>div{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;min-height:155px;padding:18px 12px;background:#00000024;border:1px solid var(--rtg-line);border-radius:7px}
+.rtg-new-rivals strong{font:900 22px 'Barlow Condensed',sans-serif;text-transform:uppercase}
+.rtg-new-rivals small{color:var(--rtg-muted);font-size:10px}
+.rtg-division-intro>.rtg-button{align-self:center;min-width:285px}
+@media(max-width:650px){.rtg-division-intro-hero{padding:24px;min-height:290px}.rtg-division-intro-icon{font-size:115px;top:4%;right:-6px}.rtg-division-intro-hero h1{font-size:clamp(47px,12vw,67px)}.rtg-division-intro-hero p{font-size:12px}.rtg-new-rivals{gap:6px}.rtg-new-rivals>div{padding:11px 4px}.rtg-new-rivals .rtg-rivalbadge{width:35px;height:40px;font-size:22px}.rtg-new-rivals strong{font-size:17px}.rtg-new-rivals small{font-size:9px}.rtg-division-intro>.rtg-button{width:100%}}
