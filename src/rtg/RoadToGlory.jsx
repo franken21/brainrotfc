@@ -156,8 +156,8 @@ function Market({c,act,go}){
 }
 function League({c}){
  const sorted=standings(c);
- return <div className="rtg-flow"><SectionHead eyebrow="THE ROAD TO THE TOP" title={DIVISIONS[c.tier]+'.'} right={<Pill>SEASON {c.season} · ROUND {c.round}/18</Pill>}/>
-  <div className="rtg-panel rtg-tablepanel"><div className="rtg-table-wrap"><table className="rtg-leaguetable"><thead><tr><th>POS</th><th>CLUB</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>PTS</th></tr></thead><tbody>{sorted.map((row,i)=><tr key={row.id} className={(row.id==='you'?'is-you ':'')+(i<2?'promote ':'')+(i>=8?'danger':'')}><td>{String(i+1).padStart(2,'0')}</td><td>{row.id==='you'?'✦ '+c.club:row.name}</td><td>{row.p}</td><td>{row.w}</td><td>{row.d}</td><td>{row.l}</td><td>{row.gf-row.ga>0?'+':''}{row.gf-row.ga}</td><td><strong>{row.pts}</strong></td></tr>)}</tbody></table></div>
+ return <div className="rtg-flow"><DivisionBanner c={c}/><SectionHead eyebrow="THE ROAD TO THE TOP" title={DIVISIONS[c.tier]+'.'} right={<Pill>SEASON {c.season} · ROUND {c.round}/18</Pill>}/>
+  <div className="rtg-panel rtg-tablepanel"><div className="rtg-table-wrap"><table className="rtg-leaguetable"><thead><tr><th>POS</th><th>CLUB</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>PTS</th></tr></thead><tbody>{sorted.map((row,i)=><tr key={row.id} className={(row.id==='you'?'is-you ':'')+(i<2?'promote ':'')+(i>=8?'danger':'')}><td>{String(i+1).padStart(2,'0')}</td><td>{row.id==='you'?'✦ '+c.club:<><span className="rtg-league-rival-icon" style={{color:c.rivals.find(r=>r.id===row.id)?.color}}>◈</span> {row.name}</>}</td><td>{row.p}</td><td>{row.w}</td><td>{row.d}</td><td>{row.l}</td><td>{row.gf-row.ga>0?'+':''}{row.gf-row.ga}</td><td><strong>{row.pts}</strong></td></tr>)}</tbody></table></div>
    <div className="rtg-tablelegend"><span><i className="rtg-legend-green"/> TOP TWO: PROMOTION (UNTIL PREMIER)</span><span><i className="rtg-legend-red"/> BOTTOM TWO: RELEGATION (ABOVE COASTAL)</span></div>
   </div>
   <div className="rtg-panel"><div className="rtg-panel-top"><span className="rtg-eyebrow">YOUR SEASON SO FAR</span><span className="rtg-small">{c.seasonResults.length} GAMES PLAYED</span></div><div className="rtg-results-grid">{c.seasonResults.length?c.seasonResults.map(r=><div key={r.round} className="rtg-mini-result"><span>R{r.round}</span><strong>{r.opponent}</strong><b className={r.result.toLowerCase()}>{r.ours} – {r.theirs}</b></div>):<div className="rtg-empty">Your road hasn't begun. The league table starts level.</div>}</div></div>
@@ -264,16 +264,26 @@ function Checkpoint({c,onPick}){
  const best=(positions)=>[...c.roster].filter(p=>positions.includes(p.role)).sort((a,b)=>b.ovr-a.ovr).slice(0,2);
  const attacking=best(['ST','LW','RW','CAM']),defending=best(['GK','CB','LB','RB']);
  const boost=(xs)=>xs.map((x,i)=>x?Math.min(x.potential-x.ovr,i===0?5:3):0);
- const atk=boost(attacking),def=boost(defending);
- return <div className="rtg-flow rtg-checkpoint"><Pill tone="lime">CHAPTER {c.round/3} · BOARD MEETING</Pill>
-  <h1>Where do we<br/><em>invest next?</em></h1><p>The next three fixtures are on the calendar. The coaches can deliver one intensive training block, or the academy can bring up a youngster. Choose your next move.</p>
+ const atk=boost(attacking),def=boost(defending),space=c.roster.length<MAX_SQUAD;
+ return <div className="rtg-flow rtg-checkpoint"><DivisionBanner c={c} compact/><Pill tone="lime">CHAPTER {c.round/3} · BOARD MEETING</Pill>
+  <h1>Where do we<br/><em>invest next?</em></h1><p>Three matches down. The coaches can deliver one intensive training block, or the academy can bring up a youngster. Choose your next move.</p>
   <div className="rtg-decision-grid">
-   <button type="button" onClick={()=>onPick('attack')}><span>01 / ATTACK TRAINING</span><div>⚡</div><h3>Find more goals.</h3><p><strong>{attacking[0]?.name}: +{atk[0]||0} OVR</strong>{attacking[1]&&<><br/>{attacking[1].name}: +{atk[1]||0} OVR</>}</p><small>Immediate improvement. Limited by each player's potential.</small><b>TRAIN THE ATTACK →</b></button>
-   <button type="button" onClick={()=>onPick('defence')}><span>02 / DEFENSIVE DRILLS</span><div>▣</div><h3>Stop conceding.</h3><p><strong>{defending[0]?.name}: +{def[0]||0} OVR</strong>{defending[1]&&<><br/>{defending[1].name}: +{def[1]||0} OVR</>}</p><small>Boost your back line before the next big match.</small><b>TRAIN THE DEFENCE →</b></button>
-   <button type="button" onClick={()=>onPick('academy')}><span>03 / YOUTH ACADEMY</span><div>★</div><h3>Take a chance.</h3><p><strong>One new academy player</strong><br/>Aged 16–18 · High growth ceiling</p><small>Unknown position and current rating. Your next hero could be waiting.</small><b>PROMOTE A YOUNGSTER →</b></button>
+   <button type="button" onClick={()=>onPick('attack')}><span>01 / ATTACK TRAINING</span><div>⚡</div><h3>Find more goals.</h3><p><strong>{attacking[0]?.name}: +{atk[0]||0} OVR</strong>{attacking[1]&&<><br/>{attacking[1].name}: +{atk[1]||0} OVR</>}</p><small>Immediate improvement, capped by potential.</small><b>TRAIN THE ATTACK →</b></button>
+   <button type="button" onClick={()=>onPick('defence')}><span>02 / DEFENSIVE DRILLS</span><div>▣</div><h3>Stop conceding.</h3><p><strong>{defending[0]?.name}: +{def[0]||0} OVR</strong>{defending[1]&&<><br/>{defending[1].name}: +{def[1]||0} OVR</>}</p><small>Strengthen your back line for the next three games.</small><b>TRAIN THE DEFENCE →</b></button>
+   <button type="button" disabled={!space} onClick={()=>onPick('academy')}><span>03 / YOUTH ACADEMY</span><div>★</div><h3>Take a chance.</h3><p><strong>{space?'One new academy player':'Squad full — 20/20'}</strong><br/>Aged 16–18 · Trains automatically on the bench</p><small>{space?'A future starter could emerge in a few matches.':'Pick training now or accept an outgoing bid next chapter.'}</small><b>{space?'PROMOTE A YOUNGSTER →':'NO SPACE AVAILABLE'}</b></button>
   </div>
  </div>;
 }
+function SaleReveal({c,go}){
+ const p=c.lastSale;if(!p)return null;
+ return <div className="rtg-flow rtg-signing-scene"><Pill tone="lime">TRANSFER OUT · CONFIRMED</Pill>
+ <div className="rtg-signed-banner"><span>DEAL DONE · {p.buyer.toUpperCase()}</span><h1>FAREWELL,<br/><em>{p.name.toUpperCase()}.</em></h1><p>{p.wasStarter?'A first-team favourite has departed. Now it is time for somebody else to step up.':'A squad player moves on to find more football.'}</p></div>
+ <div className="rtg-signing-payoff"><div><span>PLAYER SOLD</span><strong>{p.ovr}</strong><small>{p.role} · {p.age} YEARS</small></div><div className="rtg-signing-arrow">→</div><div className="after"><span>TRANSFER MONEY</span><strong>{formatCash(p.fee)}</strong><small>ADDED TO YOUR CLUB BUDGET</small></div></div>
+ <div className="rtg-notebox"><strong>{p.teamChange<0?p.teamChange+' team OVR · Can you replace him?':'Your overall team rating is unchanged.'}</strong><span>{p.fansChange>=0?'+':''}{p.fansChange} supporters · {c.roster.length}/{MAX_SQUAD} squad places filled.</span></div>
+ <div className="rtg-signing-actions"><button className="rtg-button secondary" onClick={()=>go('squad')}>VIEW SQUAD</button><button className="rtg-button primary xl" onClick={()=>go('market')}>REBUILD WITH THE MONEY →</button></div>
+ </div>;
+}
+
 function ChapterReward({c,go}){
  const choice=c.lastChoice;
  if(!choice)return null;
@@ -302,23 +312,24 @@ export default function RoadToGlory(){
  const finish=choice=>{act(s=>finishMatch(s,choice));go('result');};
  const continueReport=()=>{const next=c.seasonComplete?'season':c.checkpoint?'checkpoint':'home';act(dismissReport);go(next);};
  const choose=choice=>{act(s=>chapterChoice(s,choice));go('chapter-reward');};
- const startFirstHalf=()=>{act(kickoff);go('match');};
+ const startFirstHalf=()=>{act(quickSim);go('result');};
  const quickMatch=()=>{act(quickSim);go('result');};
  const archive=()=>{act(archiveCareer);go('home');};
  const importGame=s=>{setGame(s);go('home');setNotice('Save imported successfully.');};
  if(!c)return <Landing legacy={game.legacy} onStart={start} onImport={importGame}/>;
  const club=CLUBS.find(x=>x.id===c.id);
  let activeView=c.report&&view==='result'?'result':c.match&&view==='match'?'match':view;
- if(!['home','market','squad','league','almanac','result','match','prematch','signing','checkpoint','chapter-reward','season'].includes(activeView))activeView='home';
+ if(!['home','market','squad','league','almanac','result','match','prematch','signing','sale','checkpoint','chapter-reward','season'].includes(activeView))activeView='home';
  if(activeView==='result'&&!c.report)activeView='home';
  if(activeView==='match'&&!c.match)activeView='home';
  if(activeView==='prematch'&&(c.match||c.report||c.checkpoint||c.seasonComplete))activeView='home';
  if(activeView==='signing'&&!c.lastSigning)activeView='home';
+ if(activeView==='sale'&&!c.lastSale)activeView='home';
  if(activeView==='chapter-reward'&&!c.lastChoice)activeView='home';
  if(activeView==='checkpoint'&&!c.checkpoint)activeView='home';
  if(activeView==='season'&&!c.seasonComplete)activeView='home';
- const special=['prematch','result','match','checkpoint','chapter-reward','signing','season'].includes(activeView);
- return <div className="rtg-app"><aside className="rtg-sidebar">
+ const special=['prematch','result','match','checkpoint','chapter-reward','signing','sale','season'].includes(activeView);
+ return <div className={'rtg-app rtg-division-'+DIVISION_CONFIG[c.tier].key}><aside className="rtg-sidebar">
     <a className="rtg-brand" href="/"><span className="rtg-brand-symbol">R<span>✦</span></span><div><strong>ROAD TO GLORY</strong><small>POCKET EDITION</small></div></a>
     <div className="rtg-sideclub"><Badge club={club}/><div><span>THE MANAGER OF</span><strong>{c.club}</strong><small>{DIVISIONS[c.tier]} · S{c.season}</small></div></div>
     <div className="rtg-sidelabel">THE CLUB</div><nav className="rtg-nav">{MENU.map(([id,icon,label])=><button type="button" key={id} className={view===id?'active':''} onClick={()=>go(id)}><span>{icon}</span>{label}{id==='market'&&!c.signed&&!c.checkpoint&&!c.report&&<i/>}</button>)}</nav>
@@ -327,14 +338,15 @@ export default function RoadToGlory(){
    <div className="rtg-shell"><header className="rtg-topbar"><div><span className="rtg-topbar-issue">THE FOOTBALL CHRONICLE</span><span className="rtg-topbar-title">S{c.season} · MATCHWEEK {Math.min(18,c.round+1)} / 18</span></div><div className="rtg-topbar-right"><span className="rtg-live-dot"/> <span className="rtg-topbar-save">AUTO SAVED</span> <span className="rtg-topbar-divider"/> <b className="rtg-topbar-fans">♬ {c.supporters.toLocaleString('en-GB')} FANS</b> <span className="rtg-topbar-divider"/> <b>{formatCash(c.budget)}</b></div></header>
     {notice&&<div className="rtg-notice" role="status">{notice}<button onClick={()=>setNotice('')}>×</button></div>}
     <main className={'rtg-main '+(special?'rtg-main-special':'')}>
-      {activeView==='home'&&<Dashboard c={c} go={go} act={act}/>}
-      {activeView==='squad'&&<Squad c={c}/>}
+      {activeView==='home'&&<Dashboard c={c} go={go}/>}
+      {activeView==='squad'&&<Squad c={c} act={act} go={go}/>}
       {activeView==='market'&&<Market c={c} act={act} go={go}/>}
       {activeView==='league'&&<League c={c}/>}
       {activeView==='almanac'&&<Almanac game={game} onImport={importGame}/>}
-      {activeView==='prematch'&&<Prematch c={c} onStart={startFirstHalf} onQuick={quickMatch} onTactic={id=>act(s=>chooseTactic(s,id))} go={go}/>}
+      {activeView==='prematch'&&<Prematch c={c} onStart={startFirstHalf} onTactic={id=>act(s=>chooseTactic(s,id))} go={go}/>}
       {activeView==='match'&&<Match c={c} onFinish={finish}/>}
       {activeView==='signing'&&<SigningReveal c={c} go={go}/>}
+      {activeView==='sale'&&<SaleReveal c={c} go={go}/>}
       {activeView==='chapter-reward'&&<ChapterReward c={c} go={go}/>}
       {activeView==='result'&&<Report c={c} onContinue={continueReport}/>}
       {activeView==='checkpoint'&&<Checkpoint c={c} onPick={choose}/>}
