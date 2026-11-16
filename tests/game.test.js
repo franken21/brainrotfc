@@ -75,3 +75,15 @@ test('losing still earns coins but does not advance',()=>{
  assert.ok(result.coins>0);
  assert.equal(result.save.played,1);
 });
+
+test('freeze shots can immobilise the keeper',()=>{
+  const freeze=PLAYERS.find(p=>p.style==='Freeze');
+  const shot=resolveShot({x:.8,y:.35},.5,freeze,LEAGUES[4],()=>0);
+  assert.equal(shot.frozen,true);
+  assert.equal(shot.outcome,'GOAL');
+});
+test('chaos striker gives a coin bonus regardless of result',()=>{
+  const normal=settleMatch(freshSave(),0,true,3,1);
+  const chaos=settleMatch(freshSave(),0,true,3,1,'Chaos');
+  assert.equal(chaos.coins-normal.coins,50);
+});
