@@ -73,9 +73,9 @@ export function resolveShot(aim,timing,player,league,random=Math.random){
   const onTarget=x>=0.025&&x<=0.975&&y>=0.025&&y<=0.97;
   const reading=random()<0.30+league.keeper*0.53;
   const keeperX=reading?(x<0.44?0.25:x>0.56?0.75:0.5):(random()<0.5?0.24:0.76);
-  const keeperY=0.66;
+  const keeperY=reading?Math.max(.17,Math.min(.72,y+(random()-.5)*.20)):.66;
   const distance=Math.hypot((x-keeperX)*1.25,(y-keeperY)*0.8);
-  const reach=0.19+league.keeper*0.10;
+  const reach=0.18+league.keeper*0.11;
   const saveDifficulty=(player.power-50)/200+(player.style==='Finesse'?0.08:0)+(player.style==='Freeze'?0.1:0);
   const saved=onTarget&&distance<reach&&random()<(0.48+league.keeper*0.36-saveDifficulty-(precision>0.88?0.12:0));
   const outcome=!onTarget?'MISS':saved?'SAVED':'GOAL';
