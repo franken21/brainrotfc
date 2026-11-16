@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
  freshState,startCareer,CLUBS,ROLES,FIXTURES,validState,lineup,teamRating,
- signPlayer,scoutPlayer,chooseTactic,transferPreview,passMarket,kickoff,finishMatch,quickSim,dismissReport,
+ signPlayer,scoutPlayer,chooseTactic,transferPreview,passMarket,migrateState,kickoff,finishMatch,quickSim,dismissReport,
  chapterChoice,advanceSeason,archiveCareer,standings,seasonSummary
 } from '../src/rtg/engine.js';
 
@@ -172,4 +172,29 @@ test('match results update supporters, club form and reputation, without financi
   if(r.result==='LOSS'){defeats++;assert.ok(r.supportersChange<=0);}
  }
  assert.ok(victories>0&&defeats>0,'test experiences both winning and losing outcomes');
+});
+
+test('existing V1 browser career and imported backup migrate safely',()=>{
+ const previous=startCareer(freshState(),'northstar',1024);
+ const old=JSON.parse(JSON.stringify(previous)),c=old.career;
+ delete c.supporters;delete c.momentum;delete c.reputation;
+ delete c.windowPassed;delete c.tacticChosen;delete c.lastSigning;
+ assert.equal(validState(old),false);
+ const restored=migrateState(old);
+ assert.equal(validState(restored),true);
+ assert.equal(restored.career.club,previous.career.club);
+ assert.deepEqual(restored.career.roster,previous.career.roster);
+ assert.equal(restored.career.supporters,920);
+ assert.equal(restored.career.momentum,50);
+ assert.equal(restored.career.reputation,10);
+ const oldSigned=startCareer(freshState(),'ironvale',33);
+ const target=oldSigned.career.market.find(p=>p.fee<=oldSigned.career.budget);
+ const signed=signPlayer(oldSigned,target.id);
+ delete signed.career.lastSigning;
+ delete signed.career.supporters;
+ delete signed.career.momentum;
+ delete signed.career.reputation;
+ const restoredSigned=migrateState(signed);
+ assert.equal(restoredSigned.career.lastSigning.name,target.name);
+ assert.equal(validState(restoredSigned),true);
 });
