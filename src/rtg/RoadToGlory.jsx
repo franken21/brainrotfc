@@ -306,14 +306,36 @@ function DivisionIntro({c,go}){
  </div>;
 }
 
-function SeasonEnd({c,onAdvance,onArchive}){
- const s=seasonSummary(c);
- return <div className="rtg-flow rtg-seasonend"><Pill tone="lime">SEASON {c.season} COMPLETE</Pill><h1>{s.promoted?'WE ARE GOING UP.':s.relegated?'THE FIGHT IS ON.':s.position<=3?'SO CLOSE TO GLORY.':'A NEW CHAPTER AWAITS.'}</h1><p>{c.club} finish <strong>{ordinal(s.position)}</strong> in the {s.division} with <strong>{s.points} points</strong>. {s.promoted?'Promotion is yours. A bigger stage, a bigger budget, and fiercer rivals.':s.relegated?'Relegation hurts. But your story is not over.':'There is more to accomplish.'}</p>
-  <div className="rtg-result-stats"><div><span>FINAL POSITION</span><strong>{ordinal(s.position)}</strong></div><div><span>POINTS</span><strong>{s.points}</strong></div><div><span>TEAM RATING</span><strong>{teamRating(c)}</strong></div></div>
-  <div className="rtg-panel"><div className="rtg-panel-top"><span className="rtg-eyebrow">THE SEASON'S BEST</span></div>{[...c.roster].sort((a,b)=>b.stats.goals-a.stats.goals).slice(0,3).map(p=><PlayerTag key={p.id} p={p}/>)}</div>
-  {c.season<5?<button type="button" className="rtg-button primary xl" onClick={onAdvance}>BEGIN SEASON {c.season+1} <span>→</span></button>:<button type="button" className="rtg-button primary xl" onClick={onArchive}>WRITE YOUR LEGACY <span>→</span></button>}
+function Offseason({c,onResolve}){
+ const o=c.offseason,offers=o?.offers||[];
+ return <div className="rtg-flow rtg-offseason">
+  <div className="rtg-offseason-header"><span className="rtg-eyebrow">END OF SEASON {c.season} · THE TRANSFER DESK</span><h1>One big question.</h1><p>Another club wants one of your players. Would the money help you rebuild, or is he worth more to you on the pitch? You can accept one bid or keep everyone.</p></div>
+  <div className="rtg-fringe-clearout"><div><span className="rtg-eyebrow">✓ SQUAD CLEAN-UP · COMPLETED</span><strong>{o?.fringe?.count||0} fringe reserves cleared</strong><small>{o?.fringe?.count?o.fringe.names.join(', '):'No expendable reserves this season. Your best prospects stay.'}</small></div><div className="rtg-fringe-fee">+{formatCash(o?.fringe?.fee||0)}<span>MAXIMUM CAPPED PAYOUT</span></div></div>
+  <div className="rtg-offseason-title"><span className="rtg-eyebrow">OFFERS ON YOUR DESK</span><Pill>OVR · AGE · POTENTIAL · FEE</Pill></div>
+  <div className="rtg-star-bids">{offers.length?offers.map((offer,i)=><article className="rtg-star-bid" key={offer.id}>
+   <div className="rtg-star-bid-head"><span>{i===0?'THE EXPERIENCED STAR':'THE FUTURE STAR'}</span><strong>{offer.buyer.toUpperCase()}</strong></div>
+   <div className="rtg-star-bid-player"><span className="rtg-bid-portrait">{offer.name[0]}</span><div><span className="rtg-eyebrow">{offer.role} · {offer.age} YEARS OLD</span><h2>{offer.name}</h2></div></div>
+   <div className="rtg-star-tradeoffs"><div><span>OVERALL NOW</span><strong>{offer.ovr}</strong></div><div><span>POTENTIAL</span><strong>{offer.potential}</strong></div><div className="rtg-offer-price"><span>TRANSFER OFFER</span><strong>{formatCash(offer.fee)}</strong></div></div>
+   <p>{offer.potential-offer.ovr>=12?'Selling him could mean losing a future club legend.': 'A proven player leaves. Can you replace his current quality?'}</p>
+   <button type="button" className="rtg-button secondary" onClick={()=>onResolve(offer.playerId)}>ACCEPT {formatCash(offer.fee)} BID →</button>
+  </article>):<div className="rtg-empty">No offers for your starters this year. Everyone is staying.</div>}</div>
+  <button type="button" className="rtg-button primary xl rtg-offseason-keep" onClick={()=>onResolve(null)}>KEEP MY STARS · CONTINUE →</button>
  </div>;
 }
+function SeasonEnd({c,onAdvance,onArchive,go}){
+ const s=seasonSummary(c),reviewed=!!c.offseason?.reviewed;
+ const trophy=c.currentTrophy;
+ const move=()=>{if(!reviewed)go('offseason');else if(c.season<5)onAdvance();else onArchive();};
+ return <div className="rtg-flow rtg-seasonend rtg-seasoncompact">
+  <div className="rtg-season-topline"><Pill tone="lime">SEASON {c.season} · FINAL TABLE</Pill><button type="button" className="rtg-button primary" onClick={move}>{!reviewed?'REVIEW YEAR-END OFFERS':c.season<5?'BEGIN SEASON '+(c.season+1):'WRITE YOUR LEGACY'} →</button></div>
+  <h1>{trophy?'CHAMPIONS!':s.promoted?'WE ARE GOING UP.':s.relegated?'THE FIGHT IS ON.':s.position<=3?'SO CLOSE TO GLORY.':'A NEW CHAPTER.'}</h1>
+  <p>{c.club} finished <strong>{ordinal(s.position)}</strong> in {s.division} with <strong>{s.points} points</strong>. {s.promoted?'A bigger stage awaits.':s.relegated?'We fight to return.':'The next season is yours to shape.'}</p>
+  {trophy&&<div className="rtg-season-trophy"><span>{trophy.icon}</span><div><small>NEW SILVERWARE IN YOUR CABINET</small><strong>{trophy.label}</strong><p>Season {c.season} · {c.club}</p></div></div>}
+  <div className="rtg-result-stats"><div><span>FINAL POSITION</span><strong>{ordinal(s.position)}</strong></div><div><span>POINTS WON</span><strong>{s.points}</strong></div><div><span>STARTING XI</span><strong>{teamRating(c)} OVR</strong></div></div>
+  <div className="rtg-season-footer"><div><span className="rtg-eyebrow">{reviewed?'TRANSFER BUSINESS COMPLETE':'YEAR-END CLEAN-UP'}</span><p>{reviewed?(c.offseason?.sale?c.offseason.sale.name+' was sold for '+formatCash(c.offseason.sale.fee)+'.':'Your key players stay.'): 'Your reserve clear-out is done. Decide what to do with incoming bids.'}</p></div><button className="rtg-button primary xl" type="button" onClick={move}>{!reviewed?'OPEN SEASON REVIEW':c.season<5?'NEXT SEASON':'FINISH CAREER'} →</button></div>
+ </div>;
+}
+
 export default function RoadToGlory(){
  const [game,setGame]=useState(loadGame),[view,setView]=useState('home'),[notice,setNotice]=useState('');
  const c=game.career;
@@ -328,11 +350,12 @@ export default function RoadToGlory(){
  const startFirstHalf=()=>{act(quickSim);go('result');};
  const quickMatch=()=>{act(quickSim);go('result');};
  const archive=()=>{act(archiveCareer);go('home');};
+ const resolveOffers=id=>{act(state=>resolveOffseason(state,id));go('season');};
  const importGame=s=>{setGame(s);go('home');setNotice('Save imported successfully.');};
  if(!c)return <Landing legacy={game.legacy} onStart={start} onImport={importGame}/>;
  const club=CLUBS.find(x=>x.id===c.id);
  let activeView=c.report&&view==='result'?'result':c.match&&view==='match'?'match':view;
- if(!['home','market','squad','league','almanac','result','match','prematch','signing','sale','division-intro','checkpoint','chapter-reward','season'].includes(activeView))activeView='home';
+ if(!['home','market','squad','league','almanac','result','match','prematch','signing','sale','division-intro','checkpoint','chapter-reward','offseason','season'].includes(activeView))activeView='home';
  if(activeView==='result'&&!c.report)activeView='home';
  if(activeView==='match'&&!c.match)activeView='home';
  if(activeView==='prematch'&&(c.match||c.report||c.checkpoint||c.seasonComplete))activeView='home';
@@ -342,7 +365,8 @@ export default function RoadToGlory(){
  if(activeView==='chapter-reward'&&!c.lastChoice)activeView='home';
  if(activeView==='checkpoint'&&!c.checkpoint)activeView='home';
  if(activeView==='season'&&!c.seasonComplete)activeView='home';
- const special=['prematch','result','match','checkpoint','chapter-reward','signing','sale','division-intro','season'].includes(activeView);
+ if(activeView==='offseason'&&(!c.seasonComplete||c.offseason?.reviewed))activeView='season';
+ const special=['prematch','result','match','checkpoint','chapter-reward','signing','sale','division-intro','offseason','season'].includes(activeView);
  return <div className={'rtg-app rtg-division-'+DIVISION_CONFIG[c.tier].key}><aside className="rtg-sidebar">
     <a className="rtg-brand" href="/"><span className="rtg-brand-symbol">R<span>✦</span></span><div><strong>ROAD TO GLORY</strong><small>POCKET EDITION</small></div></a>
     <div className="rtg-sideclub"><Badge club={club}/><div><span>THE MANAGER OF</span><strong>{c.club}</strong><small>{DIVISIONS[c.tier]} · S{c.season}</small></div></div>
@@ -365,7 +389,8 @@ export default function RoadToGlory(){
       {activeView==='chapter-reward'&&<ChapterReward c={c} go={go}/>}
       {activeView==='result'&&<Report c={c} onContinue={continueReport}/>}
       {activeView==='checkpoint'&&<Checkpoint c={c} onPick={choose}/>}
-      {activeView==='season'&&<SeasonEnd c={c} onAdvance={advance} onArchive={archive}/>}
+      {activeView==='season'&&<SeasonEnd c={c} onAdvance={advance} onArchive={archive} go={go}/>}
+      {activeView==='offseason'&&<Offseason c={c} onResolve={resolveOffers}/>}
       
     </main><footer className="rtg-footer">ROAD TO GLORY / A FOOTBALL-FIRST ARCADE CAREER <span>YOUR STORY. YOUR RULES.</span></footer>
    </div>
