@@ -13,8 +13,24 @@ export const ROLES = ['GK','LB','CB','CB','RB','CM','CM','CAM','LW','ST','RW'];
 export const CLUBS = [
   {id:'northstar',name:'Northstar Rovers',city:'Northstar',crest:'✦',colors:['#dcfb72','#173c36'],budget:215000,base:52,bonus:{LW:5,ST:3},weak:'A shaky back line. Explosive wide players.',tag:'THE DREAMERS'},
   {id:'ironvale',name:'Ironvale Athletic',city:'Ironvale',crest:'◆',colors:['#ffb583','#66372d'],budget:185000,base:54,bonus:{CB:5,GK:4,ST:-7},weak:'Defensive grit. Desperate for goals.',tag:'THE UNDERDOGS'},
-  {id:'seabrook',name:'Seabrook City',city:'Seabrook',crest:'≈',colors:['#9be8ff','#174c69'],budget:195000,base:53,bonus:{CM:3,CAM:4,GK:-5},weak:'Clever midfield. Young and unpredictable.',tag:'THE WILDCARDS'}
+  {id:'seabrook',name:'Seabrook City',city:'Seabrook',crest:'≈',colors:['#9be8ff','#174c69'],budget:195000,base:53,bonus:{CM:3,CAM:4,GK:-5},weak:'Clever midfield. Young and unpredictable.',tag:'THE WILDCARDS'},
+  {id:'bracken',name:'Bracken Vale',city:'Bracken',crest:'♧',colors:['#b8f2b3','#35634b'],budget:160000,base:53,bonus:{GK:6,CB:3,ST:-5},weak:'An iron defence, no reliable finisher.',tag:'THE KEEPERS'},
+  {id:'copper',name:'Copperbridge FC',city:'Copperbridge',crest:'⚒',colors:['#ffe1a3','#9a4a26'],budget:225000,base:50,bonus:{ST:7,CAM:3,CB:-5},weak:'Goals galore. A defence full of holes.',tag:'THE FORGERS'},
+  {id:'glacier',name:'Glacier United',city:'Glacier',crest:'❄',colors:['#d6f8ff','#27758a'],budget:175000,base:54,bonus:{GK:5,CM:3,RW:-6},weak:'Ice-cold midfield. No threat out wide.',tag:'THE ICE MEN'},
+  {id:'amber',name:'Amberwick Town',city:'Amberwick',crest:'☼',colors:['#ffdb69','#8c4928'],budget:210000,base:51,bonus:{RW:7,LW:5,CB:-3},weak:'Electric wingers, fragile centre-backs.',tag:'THE FIRESTARTERS'},
+  {id:'thistle',name:'Thistlemoor Athletic',city:'Thistlemoor',crest:'✿',colors:['#f6c6ec','#734771'],budget:190000,base:52,bonus:{CAM:8,ST:-7,LB:3},weak:'A creative number ten needs a striker.',tag:'THE CREATORS'},
+  {id:'harrow',name:'Harrow Forge',city:'Harrow',crest:'⬡',colors:['#e1edf0','#4e637a'],budget:165000,base:55,bonus:{CB:6,CM:4,ST:-7},weak:'Built like a fortress. Short on goals.',tag:'THE BUILDERS'},
+  {id:'willow',name:'Willowmere FC',city:'Willowmere',crest:'❦',colors:['#d8ffb4','#3f7547'],budget:205000,base:51,bonus:{ST:8,CM:-4,GK:-4},weak:'A natural finisher. A midfield in trouble.',tag:'THE HOPEFULS'},
+  {id:'falcon',name:'Falconhurst Rovers',city:'Falconhurst',crest:'➤',colors:['#ffd8b2','#803b37'],budget:185000,base:53,bonus:{LW:7,RW:4,CB:-6},weak:'Flying wingers. Vulnerable to counters.',tag:'THE FALCONS'},
+  {id:'moon',name:'Moonbay Wanderers',city:'Moonbay',crest:'☾',colors:['#d6caff','#39346c'],budget:200000,base:52,bonus:{CAM:7,CM:5,GK:-5},weak:'Pass masters looking for defensive security.',tag:'THE NIGHT OWLS'},
+  {id:'oak',name:'Oakhearth City',city:'Oakhearth',crest:'♠',colors:['#ffe9a7','#73532e'],budget:175000,base:54,bonus:{CB:5,ST:3,LW:-8},weak:'Strong spine. A missing left wing.',tag:'THE OAKS'}
 ];
+export function startingChoices(seed=1,offset=0){
+ const pool=CLUBS.map(x=>x.id);
+ let state=(((seed>>>0)^(Math.imul(offset+1,2654435761)))>>>0)||1;
+ for(let i=pool.length-1;i>0;i--){state=(Math.imul(state,1664525)+1013904223)>>>0;const j=state%(i+1);[pool[i],pool[j]]=[pool[j],pool[i]];}
+ return pool.slice(0,3).map(id=>CLUBS.find(c=>c.id===id));
+}
 const RIVAL_POOLS = [
  [
   ['Westhaven Rovers','press','Relentless pressing','#f28d75','The Red Wall','Westhaven Park'],
@@ -112,22 +128,23 @@ function generateMarket(c){
  c.signed=false;c.scouted=false;c.scoutedId=null;c.windowPassed=false;c.lastSigning=null;c.lastChoice=null;
  // Your team's identity persists between windows; scouting each opponent is optional.
  c.tacticChosen=true;
- c.sold=false;c.saleOffers=createSaleOffers(c);c.lastSale=null;
+ c.sold=false;c.saleOffers=[];c.lastSale=null;
 }
 function buildSeason(c){
  c.rivals=rivalsFor(c);c.table=startTable(c.rivals);
  c.fixtures=FIXTURES;c.round=0;c.match=null;c.report=null;c.checkpoint=false;c.seasonComplete=false;
- c.seasonResults=[];c.tactic=c.tactic||'balanced';c.seasonGoals=0;
+ c.seasonResults=[];c.tactic=c.tactic||'balanced';c.seasonGoals=0;c.offseason=null;c.currentTrophy=null;
  generateMarket(c);
 }
-export function freshState(){return {version:VERSION,legacy:{runs:[],legends:[],points:0},career:null};}
+export function freshState(){return {version:VERSION,legacy:{runs:[],legends:[],trophies:[],points:0},career:null};}
 export function startCareer(input,clubId,seed=Date.now()){
  const s=clone(input&&input.version===VERSION?input:freshState());
  const club=CLUBS.find(x=>x.id===clubId);if(!club)throw Error('Choose a valid club');
+ if(!Array.isArray(s.legacy.trophies))s.legacy.trophies=[];
  const c={id:club.id,club:club.name,crest:club.crest,colors:club.colors,season:1,tier:0,
   budget:club.budget,seed:(seed>>>0)||1,serial:0,roster:[],round:0,careerResults:[],memories:[],
   supporters:club.id==='northstar'?920:club.id==='ironvale'?780:1100,momentum:50,reputation:10,
-  run:(s.legacy.runs.length+1)};
+  trophies:[],run:(s.legacy.runs.length+1)};
  c.roster=ROLES.map((role,i)=>{
   const ovr=clamp(club.base+int(c,-7,6)+(club.bonus[role]||0),42,69);
   return player(c,role,ovr,int(c,20,29),ovr+int(c,4,13));
@@ -192,34 +209,58 @@ function saleable(c,p){
  // Never leave the club without a goalkeeper, or without a player for a unique position.
  return c.roster.some(other=>other.id!==p.id&&other.role===p.role);
 }
-function saleValue(c,p,star=false){
- const multiplier=c.tier===0?1:c.tier===1?12:85;
- return Math.round((p.ovr*12+Math.max(0,p.ovr-55)*48)*(star?1.8:1.15)*multiplier/10)*1000;
+// Sales occur only after Round 18. Values are capped well below the cost of a
+// top signing so the transfer market cannot become trivial.
+const SALE_CAPS=[95000,850000,5900000];
+const RESERVE_CAPS=[35000,270000,1800000];
+function saleValue(c,p){
+ const cap=SALE_CAPS[c.tier];
+ const quality=clamp((p.ovr-(c.tier===0?46:c.tier===1?58:71))/29,.18,1);
+ const future=clamp((p.potential-p.ovr)/25,0,1);
+ return Math.round((cap*(.38+.35*quality+.17*future))/1000)*1000;
 }
-function createSaleOffers(c){
- if(c.roster.length<13)return [];
+function offseasonOffers(c){
+ const xi=new Set(lineup(c).map(p=>p.id));
+ const fringe=c.roster.filter(p=>!xi.has(p.id)&&saleable(c,p))
+  .filter(p=>p.age>=24||p.potential<=p.ovr+5)
+  .sort((a,b)=>a.potential-b.potential||b.age-a.age);
+ const fringeIds=fringe.map(p=>p.id),fringeName=fringe.map(p=>p.name);
+ const bundle=fringe.length?Math.min(RESERVE_CAPS[c.tier],Math.round((RESERVE_CAPS[c.tier]*Math.min(1,fringe.length/5))/1000)*1000):0;
+ // Automatically clear expendable fringe players at the end of the season.
+ // High-potential youngsters are protected; even a cheap prospect can become a star.
+ c.roster=c.roster.filter(p=>!fringeIds.includes(p.id));
+ c.budget+=bundle;
+ if(fringe.length)c.memories.unshift('Released '+fringe.length+' fringe players as a group for '+formatCash(bundle)+'. Future stars retained.');
  const starters=new Set(lineup(c).map(p=>p.id));
- const eligible=c.roster.filter(p=>saleable(c,p));
- const bench=eligible.filter(p=>!starters.has(p.id)).sort((a,b)=>a.potential-b.potential||a.ovr-b.ovr);
- const stars=eligible.filter(p=>starters.has(p.id)).sort((a,b)=>b.ovr-a.ovr);
- const offers=[];
- if(bench[0])offers.push({id:bench[0].id,fee:saleValue(c,bench[0]),kind:'FRINGE PLAYER',buyer:'Northport Athletic'});
- if(stars[0]&&c.round>=3&&rand(c)<(c.roster.length>=18?.6:.33))offers.push({id:stars[0].id,fee:saleValue(c,stars[0],true),kind:'BIG CLUB BID',buyer:c.tier===2?'Royal Academy':'Capital City FC'});
- return offers;
+ const eligible=c.roster.filter(p=>starters.has(p.id)&&saleable(c,p));
+ const byCurrent=[...eligible].sort((a,b)=>b.ovr-a.ovr||b.potential-a.potential);
+ const byPotential=[...eligible].sort((a,b)=>b.potential-a.potential||b.ovr-a.ovr);
+ const picks=[];
+ if(byCurrent[0])picks.push(byCurrent[0]);
+ if(byPotential.find(p=>p.id!==picks[0]?.id))picks.push(byPotential.find(p=>p.id!==picks[0]?.id));
+ const bidders=['Capital City FC','Royal Meridian','Granite County','Vanguard United','Copperford United'];
+ const offers=picks.map((p,k)=>({id:p.id,playerId:p.id,fee:saleValue(c,p),kind:k===0?'STAR PLAYER':'YOUNG TALENT',
+  buyer:bidders[(c.season*2+c.tier*3+k)%bidders.length],ovr:p.ovr,potential:p.potential,age:p.age,role:p.role,name:p.name}));
+ return {reviewed:false,offers,fringe:{count:fringe.length,names:fringeName,fee:bundle},
+  sale:null,startingBudget:c.budget,annualCap:SALE_CAPS[c.tier]};
 }
-export function sellPlayer(input,id){
+export function resolveOffseason(input,playerId=null){
  const s=clone(input),c=s.career;
- if(!c||c.sold||c.match||c.report||c.checkpoint||c.seasonComplete)return s;
- const offer=(c.saleOffers||[]).find(o=>o.id===id),p=c.roster.find(x=>x.id===id);
- if(!offer||!p||!saleable(c,p))return s;
- const wasStarter=starter(c,p),oldRating=teamRating(c);
- c.roster=c.roster.filter(x=>x.id!==id);c.budget+=offer.fee;c.sold=true;
- const fans=wasStarter?-140:25;c.supporters=Math.max(200,c.supporters+fans);
- c.lastSale={id:p.id,name:p.name,role:p.role,ovr:p.ovr,age:p.age,fee:offer.fee,buyer:offer.buyer,
-   wasStarter,teamChange:teamRating(c)-oldRating,fansChange:fans};
- c.memories.unshift(p.name+' joins '+offer.buyer+' for '+formatCash(offer.fee)+'. '+(wasStarter?'A star has departed.':'Space opens in the dressing room.'));
+ if(!c||!c.seasonComplete||c.report||!c.offseason||c.offseason.reviewed)return s;
+ if(playerId!==null){
+  const o=c.offseason.offers.find(o=>o.playerId===playerId);
+  const p=c.roster.find(p=>p.id===playerId);
+  if(!o||!p||!saleable(c,p))return s;
+  const before=teamRating(c);c.roster=c.roster.filter(x=>x.id!==p.id);
+  c.budget+=o.fee;
+  c.supporters=Math.max(200,c.supporters-90);
+  c.offseason.sale={...o,teamChange:teamRating(c)-before};
+  c.memories.unshift(p.name+' leaves for '+o.buyer+' (£'+Math.round(o.fee/1000)+'k). A new era begins.');
+ }
+ c.offseason.reviewed=true;
  return s;
 }
+
 export function growthWatch(c){
  const xi=new Set(lineup(c).map(p=>p.id));
  return c.roster.filter(p=>p.age<=23&&p.potential>p.ovr&&!xi.has(p.id))
@@ -374,7 +415,17 @@ export function finishMatch(input,choice='hold'){
  report.tablePosition=standings(c).findIndex(x=>x.id==='you')+1;
  c.seasonResults.push({round:c.round,opponent:m.fixture.opp.name,home:m.fixture.home,ours,theirs,result:report.result});
  c.report=report;c.match=null;
- if(c.round===18){c.seasonComplete=true;}
+ if(c.round===18){
+  c.seasonComplete=true;
+  const finish=seasonSummary(c);
+  if(finish.position===1){
+   const name=c.tier===2?'Premier Crown':'Champion of '+DIVISIONS[c.tier];
+   const cup={id:'run-'+c.run+'-season-'+c.season+'-title',icon:c.tier===2?'👑':'🏆',kind:'champion',
+    label:name,division:DIVISIONS[c.tier],tier:c.tier,season:c.season,club:c.club,run:c.run};
+   c.trophies.push(cup);c.currentTrophy=cup;
+  }
+  c.offseason=offseasonOffers(c);
+ }
  else if(c.round%3===0)c.checkpoint=true;
  return s;
 }
@@ -413,7 +464,7 @@ export function seasonSummary(c){
 }
 export function advanceSeason(input){
  const s=clone(input),c=s.career;
- if(!c||!c.seasonComplete||c.report||c.season>=5)return s;
+ if(!c||!c.seasonComplete||c.report||c.season>=5||!c.offseason?.reviewed)return s;
  const summary=seasonSummary(c);
  c.careerResults.push({season:c.season,...summary});
  if(summary.promoted)c.tier++;
@@ -422,7 +473,7 @@ export function advanceSeason(input){
  c.supporters+=summary.promoted?900:summary.relegated?-250:150;
  c.reputation=clamp(c.reputation+(summary.promoted?12:summary.relegated?-6:3),0,100);c.momentum=50;
  c.roster.forEach(p=>{p.age++;p.form=0;});
- // End-of-season fringe departures: avoid an ever-growing squad but keep future stars.
+ // Emergency cap only: normal fringe clear-out already happened in the season review.
  // Release only non-starting, low-ceiling players; never eject the last player in a role.
  const released=[];
  while(c.roster.length>18){
@@ -438,7 +489,9 @@ export function advanceSeason(input){
 }
 export function archiveCareer(input){
  const s=clone(input),c=s.career;
- if(!c||!c.seasonComplete||c.report||c.season!==5)return s;
+ if(!c||!c.seasonComplete||c.report||c.season!==5||!c.offseason?.reviewed)return s;
+ if(!Array.isArray(s.legacy.trophies))s.legacy.trophies=[];
+ for(const trophy of c.trophies||[])if(!s.legacy.trophies.some(x=>x.id===trophy.id))s.legacy.trophies.push(trophy);
  const summary=seasonSummary(c);
  const results=[...c.careerResults,{season:c.season,...summary}];
  const top=[...c.roster].sort((a,b)=>b.ovr-a.ovr).slice(0,3);
@@ -464,6 +517,11 @@ export function migrateState(s){
  if(typeof c.momentum!=='number')c.momentum=50;
  if(typeof c.reputation!=='number')c.reputation=10;
  if(!Array.isArray(c.saleOffers))c.saleOffers=[];
+ if(!Array.isArray(s.legacy.trophies))s.legacy.trophies=[];
+ if(!Array.isArray(c.trophies))c.trophies=[];
+ // Earlier preview careers carry over; old in-season sale offers are suppressed.
+ if(!c.seasonComplete)c.saleOffers=[];
+ if(c.seasonComplete&&!c.offseason)c.offseason=offseasonOffers(c);
  if(typeof c.sold!=='boolean')c.sold=false;
  if(!c.tactic||!TACTICS[c.tactic])c.tactic='balanced';
  (c.rivals||[]).forEach((r,i)=>{
@@ -492,6 +550,9 @@ export function validState(s){
  if(c.budget<0||new Set(c.roster.map(p=>p.id)).size!==c.roster.length)return false;
  if(!Number.isFinite(c.supporters)||c.supporters<200||!Number.isFinite(c.momentum)||c.momentum<0||c.momentum>100||!Number.isFinite(c.reputation)||c.reputation<0||c.reputation>100)return false;
  if(c.table.length!==10||c.table.some(x=>x.p!==c.round))return false;
+ if(!Array.isArray(c.trophies)||!Array.isArray(s.legacy.trophies))return false;
+ if(c.seasonComplete&&(!c.offseason||!Array.isArray(c.offseason.offers)||c.offseason.offers.length>2))return false;
+ if(c.offseason&&c.offseason.fringe.fee>RESERVE_CAPS[c.tier])return false;
  if(!TACTICS[c.tactic]||!Array.isArray(c.saleOffers)||c.saleOffers.length>2)return false;
  if(c.roster.some(p=>p.ovr>p.potential||p.ovr<0||p.potential>99))return false;
  if(c.match&&c.report)return false;
