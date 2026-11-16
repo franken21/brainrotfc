@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
  freshState,startCareer,CLUBS,ROLES,FIXTURES,validState,lineup,teamRating,
- signPlayer,scoutPlayer,chooseTactic,kickoff,finishMatch,quickSim,dismissReport,
+ signPlayer,scoutPlayer,chooseTactic,transferPreview,passMarket,kickoff,finishMatch,quickSim,dismissReport,
  chapterChoice,advanceSeason,archiveCareer,standings,seasonSummary
 } from '../src/rtg/engine.js';
 
@@ -101,4 +101,75 @@ test('a separate career starts without importing the previous squad',()=>{
  assert.ok(validState(s));
  assert.equal(s.career.club,'Ironvale Athletic');
  assert.equal(s.legacy.runs.length,0);
+});
+
+
+test('market offers visibly different ages and actionable immediate/future tradeoffs',()=>{
+ const s=startCareer(freshState(),'northstar',42),c=s.career;
+ assert.equal(c.market.length,5);
+ assert.ok(c.market[0].age<=20,'youth signing is actually young');
+ assert.ok(c.market[1].age>=27,'instant upgrade is experienced');
+ assert.ok(c.market[0].potential-c.market[0].ovr>c.market[1].potential-c.market[1].ovr,'prospect has greater upside');
+ for(const p of c.market){
+  const preview=transferPreview(c,p);
+  assert.ok(Number.isFinite(preview.attack)&&Number.isFinite(preview.defence));
+  assert.ok(['HIGH','GOOD','LIMITED'].includes(preview.upside));
+ }
+ const snapshot=JSON.stringify(c);transferPreview(c,c.market[1]);assert.equal(JSON.stringify(c),snapshot,'preview is pure');
+});
+test('signing creates meaningful readback-safe payoff and closes the window',()=>{
+ let s=startCareer(freshState(),'ironvale',331);
+ const original=s.career.budget,fanBase=s.career.supporters;
+ const p=s.career.market.find(p=>p.fee<=original);
+ const preview=transferPreview(s.career,p);
+ s=signPlayer(s,p.id);
+ assert.ok(s.career.lastSigning);
+ assert.equal(s.career.lastSigning.name,p.name);
+ assert.equal(s.career.lastSigning.overall,preview.overall);
+ assert.equal(s.career.lastSigning.budget,original-p.fee);
+ assert.equal(s.career.supporters,fanBase+s.career.lastSigning.supportersChange);
+ assert.equal(s.career.signed,true);
+ assert.equal(s.career.roster.length,16);
+ assert.ok(validState(JSON.parse(JSON.stringify(s))));
+ assert.deepEqual(passMarket(s),s,'cannot pass after signing');
+});
+test('passing a window, selecting a game plan and changing chapter resets the prep checklist',()=>{
+ let s=startCareer(freshState(),'northstar',9999);
+ assert.equal(s.career.tacticChosen,false);
+ s=chooseTactic(s,'press');
+ assert.equal(s.career.tacticChosen,true);
+ assert.equal(s.career.tactic,'press');
+ s=passMarket(s);assert.equal(s.career.windowPassed,true);
+ assert.equal(s.career.signed,false);
+ assert.deepEqual(signPlayer(s,s.career.market[0].id),s);
+ for(let i=0;i<3;i++){s=quickSim(s);s=dismissReport(s);}
+ assert.equal(s.career.checkpoint,true);
+ s=chapterChoice(s,'attack');
+ assert.equal(s.career.windowPassed,false);
+ assert.equal(s.career.tacticChosen,false);
+ assert.ok(s.career.lastChoice.message.includes('masterclass'));
+ assert.equal(s.career.market.length,5);
+ assert.ok(validState(s));
+});
+test('match results update supporters, club form and reputation, without financial underflow',()=>{
+ let victories=0,defeats=0;
+ for(let seed=11;seed<61;seed++){
+  let s=startCareer(freshState(),'seabrook',seed),c=s.career;
+  const fansBefore=c.supporters,momentumBefore=c.momentum,repBefore=c.reputation;
+  s=kickoff(s);
+  assert.equal(s.career.match.phase,'half');
+  assert.equal(s.career.round,0,'the first half is still mid-match');
+  s=finishMatch(s,seed%2?'push':'protect');
+  const r=s.career.report;
+  assert.equal(r.supportersBefore,fansBefore);
+  assert.equal(r.supportersAfter,s.career.supporters);
+  assert.equal(r.supportersAfter-r.supportersBefore,r.supportersChange);
+  assert.equal(r.momentumAfter-momentumBefore,r.momentumChange);
+  assert.equal(r.reputationAfter-repBefore,r.reputationChange);
+  assert.ok(s.career.budget>=0);
+  assert.ok(validState(s));
+  if(r.result==='WIN'){victories++;assert.ok(r.supportersChange>0);assert.ok(r.momentumChange>=0);}
+  if(r.result==='LOSS'){defeats++;assert.ok(r.supportersChange<=0);}
+ }
+ assert.ok(victories>0&&defeats>0,'test experiences both winning and losing outcomes');
 });
