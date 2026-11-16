@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
-import {CLUBS,DIVISIONS,DIVISION_CONFIG,MAX_SQUAD,ROLES,TACTICS,SAVE_KEY,VERSION,freshState,startCareer,lineup,profile,teamRating,nextFixture,standings,signPlayer,scoutPlayer,chooseTactic,kickoff,finishMatch,quickSim,dismissReport,chapterChoice,advanceSeason,archiveCareer,seasonSummary,formatCash,ordinal,validState,transferPreview,passMarket,migrateState,clubBoost,growthWatch,sellPlayer,tacticalMatchup} from './engine.js';
+import {CLUBS,DIVISIONS,DIVISION_CONFIG,MAX_SQUAD,ROLES,TACTICS,startingChoices,resolveOffseason,SAVE_KEY,VERSION,freshState,startCareer,lineup,profile,teamRating,nextFixture,standings,signPlayer,scoutPlayer,chooseTactic,kickoff,finishMatch,quickSim,dismissReport,chapterChoice,advanceSeason,archiveCareer,seasonSummary,formatCash,ordinal,validState,transferPreview,passMarket,migrateState,clubBoost,growthWatch,sellPlayer,tacticalMatchup} from './engine.js';
 import './road-to-glory.css';
 
 function loadGame(){
@@ -11,8 +11,8 @@ const MENU=[['home','⌂','Clubhouse'],['squad','▦','Squad'],['market','↗','
 const FORMATION=[[50,86],[12,67],[37,67],[63,67],[88,67],[35,47],[65,47],[50,36],[14,21],[50,17],[86,21]];
 const stageLabels=['MAKE YOUR MARK','FIND YOUR FEET','BUILD MOMENTUM','CHASE THE TOP','THE RUN-IN','THE FINAL PUSH'];
 
-function Badge({club,size=''}){return <span className={'rtg-crest '+size} style={{'--crest-a':club?.colors?.[0]||'#d8fe73','--crest-b':club?.colors?.[1]||'#234c39'}}>{club?.crest||'✦'}</span>}
-function RivalBadge({rival}){return <span className="rtg-rivalbadge rtg-rivalbadge-painted" style={{'--rival-ink':rival?.color||'#9cb7a4'}}>◈</span>}
+function Badge({club,size=''}){const letters=(club?.name||'FC').split(' ').map(x=>x[0]).join('').slice(0,3);return <span className={'rtg-crest rtg-crest-custom '+size} style={{'--crest-a':club?.colors?.[0]||'#d8fe73','--crest-b':club?.colors?.[1]||'#234c39'}}><span className="rtg-crest-mark">{club?.crest||'✦'}</span><span className="rtg-crest-letters">{letters}</span></span>}
+function RivalBadge({rival}){const letters=(rival?.name||'FC').split(' ').map(x=>x[0]).join('').slice(0,2);return <span className={'rtg-rivalbadge rtg-rivalbadge-painted rtg-rival-'+(rival?.style||'balanced')} style={{'--rival-ink':rival?.color||'#9cb7a4'}}><b>{letters}</b><small>{rival?.style==='press'?'↗':rival?.style==='counter'?'↯':'◆'}</small></span>}
 function DivisionBanner({c,compact=false}){const d=DIVISION_CONFIG[c.tier];return <div className={'rtg-stage-banner '+(compact?'compact':'')}><div className="rtg-stage-seal">{d.icon}</div><div><span>DIVISION {c.tier+1} / 3 · SEASON {c.season}</span><strong>{DIVISIONS[c.tier]}</strong><small>{d.subtitle} · {d.description}</small></div><div className="rtg-stage-meter">{DIVISION_CONFIG.map((o,i)=><span key={o.key} className={i<=c.tier?'lit':''}>{o.icon}</span>)}</div></div>}
 function Pill({children,tone=''}){return <span className={'rtg-pill '+tone}>{children}</span>}
 function Cash({n}){return <span>{formatCash(n)}</span>}
@@ -28,8 +28,10 @@ function Pitch({eleven,compact=false,club}){
   <span className="rtg-pitch-bottom">NORTH END · HOME</span>
  </div>;
 }
+function TrophyCabinet({trophies=[],mini=false,go}){const shown=trophies.slice().reverse();return <section className={'rtg-cabinet '+(mini?'mini':'')}><div className="rtg-cabinet-title"><div><span className="rtg-eyebrow">THE TROPHY CABINET</span><strong>{shown.length?shown.length+' pieces of silverware':'The shelves are waiting'}</strong></div>{go&&<button type="button" className="rtg-textbutton" onClick={()=>go('almanac')}>OPEN CABINET →</button>}</div><div className="rtg-cabinet-shelf">{shown.length?shown.slice(0,mini?4:24).map((t,i)=><div className={'rtg-trophy rtg-trophy-tier-'+t.tier} key={t.id}><span className="rtg-trophy-icon">{t.icon||'🏆'}</span><div><strong>{t.label}</strong><small>{t.club} · Season {t.season}</small></div></div>):[0,1,2].map(i=><div className="rtg-trophy empty" key={i}><span className="rtg-trophy-icon">{i===2?'♕':'♧'}</span><div><strong>{['Coastal','National','Premier'][i]} title</strong><small>Not won yet</small></div></div>)}</div></section>}
 function Landing({legacy,onStart,onImport}){
- const [selection,setSelection]=useState(null),importRef=useRef(null);
+ const [selection,setSelection]=useState(null),[seed]=useState(()=>Date.now()),[choiceRound,setChoiceRound]=useState(0),importRef=useRef(null);
+ const offered=startingChoices(seed,choiceRound);
  async function restoreBackup(event){
   const file=event.target.files?.[0];if(!file)return;
   try{
@@ -44,8 +46,8 @@ function Landing({legacy,onStart,onImport}){
   <div className="rtg-landing-inner">
    <div className="rtg-landing-lockup"><div className="rtg-mark">RTG<span>✦</span></div><Pill tone="lime">SINGLE PLAYER · NO ACCOUNT</Pill></div>
    <div className="rtg-landing-hero"><span className="rtg-eyebrow">SMALL CLUB. BIG DREAMS.</span><h1>FIVE SEASONS.<br/><em>ONE SHOT AT GLORY.</em></h1><p>Find a diamond in the rough. Make the signing that changes everything. Watch your unknowns become legends. Then do it all again.</p></div>
-   <div className="rtg-landing-title"><div><span className="rtg-eyebrow">YOUR STORY STARTS HERE</span><h2>Choose your underdog.</h2></div><span>Three clubs. Three different problems.</span></div>
-   <div className="rtg-clubgrid">{CLUBS.map(club=><button type="button" key={club.id} className={'rtg-clubchoice '+(selection===club.id?'selected':'')} onClick={()=>setSelection(club.id)}>
+   <div className="rtg-landing-title"><div><span className="rtg-eyebrow">YOUR STORY STARTS HERE</span><h2>Choose your underdog.</h2></div><button type="button" className="rtg-button secondary" onClick={()=>{setChoiceRound(n=>n+1);setSelection(null);}}>↻ THREE DIFFERENT CLUBS</button></div>
+   <div className="rtg-clubgrid">{offered.map(club=><button type="button" key={club.id} className={'rtg-clubchoice '+(selection===club.id?'selected':'')} onClick={()=>setSelection(club.id)}>
      <div className="rtg-clubchoice-top"><Badge club={club}/><span className="rtg-club-index">{club.tag}</span></div>
      <h3>{club.name}</h3><p>{club.weak}</p>
      <div className="rtg-clubchoice-bottom"><span>STARTING FUNDS <b>{formatCash(club.budget)}</b></span><span className="rtg-select-dot">{selection===club.id?'✓':'↗'}</span></div>
