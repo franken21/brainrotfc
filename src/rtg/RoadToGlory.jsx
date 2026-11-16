@@ -97,18 +97,27 @@ function Dashboard({c,go}){
   </div>
  </div>;
 }
-function Squad({c}){
- const club=CLUBS.find(x=>x.id===c.id),eleven=lineup(c),ids=new Set(eleven.map(x=>x?.id)),bench=[...c.roster].filter(x=>!ids.has(x.id)).sort((a,b)=>b.ovr-a.ovr);
- return <div className="rtg-flow"><SectionHead eyebrow="YOUR PLAYERS" title="The dressing room." right={<Pill tone="lime">{teamRating(c)} TEAM OVR</Pill>}/>
-  <div className="rtg-squad-layout"><Pitch eleven={eleven} club={club}/>
-  <div className="rtg-panel rtg-squadlist"><div className="rtg-panel-top"><span className="rtg-eyebrow">FIRST TEAM</span><span className="rtg-small">AUTO-SELECTED BY POSITION</span></div>{eleven.map((p,i)=><PlayerTag key={p.id||i} p={p}/>)}</div></div>
-  <div className="rtg-panel"><div className="rtg-panel-top"><span className="rtg-eyebrow">SQUAD DEPTH</span><span className="rtg-small">{bench.length} AVAILABLE</span></div><div className="rtg-bench">{bench.map(p=><PlayerTag key={p.id} p={p} muted/>)}</div>
-   <div className="rtg-notebox">Your strongest eligible player starts in each position. New signings automatically compete for the XI. No tedious lineup admin.</div>
-  </div>
+function Squad({c,act,go}){
+ const club=CLUBS.find(x=>x.id===c.id),eleven=lineup(c),ids=new Set(eleven.map(x=>x?.id));
+ const bench=[...c.roster].filter(x=>!ids.has(x.id)).sort((a,b)=>b.ovr-a.ovr);
+ const youth=growthWatch(c),canSell=!c.sold&&!c.match&&!c.report&&!c.checkpoint&&!c.seasonComplete;
+ return <div className="rtg-flow"><SectionHead eyebrow="THE DRESSING ROOM" title="First team & future stars" right={<Pill tone="lime">{c.roster.length}/{MAX_SQUAD} PLACES</Pill>}/>
+  <div className="rtg-squad-layout"><Pitch eleven={eleven} club={club}/><div className="rtg-panel rtg-squadlist"><div className="rtg-panel-top"><span className="rtg-eyebrow">STARTING XI</span><span className="rtg-small">BEST PLAYER AUTO-STARTS IN EACH ROLE</span></div>{eleven.map((p,i)=><PlayerTag key={p?.id||i} p={p}/>)}</div></div>
+  <section className="rtg-panel rtg-youth-desk"><div className="rtg-panel-top"><span className="rtg-eyebrow">THE NEXT GENERATION</span><Pill tone="lime">AUTOMATIC DEVELOPMENT</Pill></div>
+   <h3>Your future first-team stars</h3><p className="rtg-subcopy">Youth players keep training even on the bench. When one surpasses a starter in his position, he gets picked automatically.</p>
+   <div className="rtg-youth-grid">{youth.length?youth.map(p=><div className="rtg-youth-card" key={p.id}><div className="rtg-youth-top"><span>{p.role} · AGE {p.age}</span><span>OVR {p.ovr}</span></div><strong>{p.name}</strong><div className="rtg-youth-potential"><span>NOW {p.ovr}</span><div><i style={{width:(Math.round(p.ovr/Math.max(1,p.potential)*100))+'%'}}/></div><span>POT {p.potential}</span></div><small>+{p.growth||0} career growth · {p.age<=20?'Fast-track training':'Reserve development'}</small></div>):<div className="rtg-empty">No reserve prospects waiting right now. Watch the academy or scouting market.</div>}</div>
+  </section>
+  <section className="rtg-panel"><div className="rtg-panel-top"><span className="rtg-eyebrow">TRANSFER INBOX</span><span className="rtg-small">{c.sold?'DEAL COMPLETED':(c.saleOffers||[]).length+' INCOMING BIDS'}</span></div>
+   <p className="rtg-subcopy">Big clubs can try to buy your stars. You choose whether anyone leaves. One outgoing deal per chapter; you can ignore the offers.</p>
+   {c.sold?<div className="rtg-market-closed"><span>✓</span><div><strong>{c.lastSale?.name} has left the club.</strong><p>{formatCash(c.lastSale?.fee||0)} received from {c.lastSale?.buyer}.</p></div><button className="rtg-button secondary" onClick={()=>go('sale')}>VIEW DEAL →</button></div>:
+    <div className="rtg-offer-grid">{(c.saleOffers||[]).map(offer=>{const p=c.roster.find(x=>x.id===offer.id);if(!p)return null;const isFirstTeam=ids.has(p.id);return <div className={'rtg-sale-card '+(isFirstTeam?'star-offer':'')} key={offer.id}><span className="rtg-eyebrow">{offer.kind}</span><h3>{p.name}</h3><p>{p.role} · {p.age} YEARS · {p.ovr} OVR · {isFirstTeam?'IN THE STARTING XI':'RESERVE SQUAD'}</p><div className="rtg-bid-value"><span>{offer.buyer} offer</span><strong>{formatCash(offer.fee)}</strong></div><small>{isFirstTeam?'Sell a key player for a major windfall — your team rating might drop.':'Clear space and fund a future signing.'}</small><button type="button" className="rtg-button secondary" disabled={!canSell} onClick={()=>{act(state=>sellPlayer(state,offer.id));go('sale');}}>ACCEPT BID →</button></div>})}
+    {!(c.saleOffers||[]).length&&<div className="rtg-empty">No clubs are bidding this chapter.</div>}</div>}
+  </section>
+  <section className="rtg-panel"><div className="rtg-panel-top"><span className="rtg-eyebrow">THE BENCH</span><span className="rtg-small">{bench.length} AVAILABLE</span></div><div className="rtg-bench">{bench.map(p=><PlayerTag key={p.id} p={p} muted/>)}</div><div className="rtg-notebox">Maximum {MAX_SQUAD} players. Outgoing bids and off-season fringe departures help prevent squad bloat.</div></section>
  </div>;
 }
 function Market({c,act,go}){
- const canBuy=!c.signed&&!c.windowPassed&&!c.match&&!c.report&&!c.checkpoint&&!c.seasonComplete;
+ const canBuy=!c.signed&&!c.windowPassed&&!c.match&&!c.report&&!c.checkpoint&&!c.seasonComplete&&c.roster.length<MAX_SQUAD;
  const p=profile(c);
  const descriptors=[
   {style:'THE LONG GAME',sub:'Could become a star. Will need minutes.',risk:'BUILD FOR THE FUTURE'},
@@ -118,7 +127,8 @@ function Market({c,act,go}){
   {style:'THE BREAKOUT BET',sub:'Young, improving and not yet the finished player.',risk:'GROW YOUR OWN STAR'}
  ];
  return <div className="rtg-flow"><SectionHead eyebrow={'RECRUITMENT OFFICE · CHAPTER '+(Math.floor(c.round/3)+1)} title="Transfer shortlist" right={<div className="rtg-budget">CLUB FUNDS <strong>{formatCash(c.budget)}</strong></div>}/>
-  <div className="rtg-market-intro rtg-window-brief"><span className="rtg-market-icon">⌁</span><div><strong>The board has room for one signing.</strong><p>Do we spend big to win now, back a teenager for later, or strengthen another position? You can scout one player for free before deciding. Your current squad: ATT {p.attack} · DEF {p.defence}.</p></div></div>
+  <div className="rtg-market-intro rtg-window-brief"><span className="rtg-market-icon">⌁</span><div><strong>The manager can make one signing.</strong><p>Do we spend big to win now, back a teenager for later, or strengthen another position? You can scout one player for free before deciding. Squad {c.roster.length}/{MAX_SQUAD} · ATT {p.attack} · DEF {p.defence}.</p></div></div>
+  {c.roster.length>=MAX_SQUAD&&<div className="rtg-market-closed"><span>!</span><div><strong>FULL DRESSING ROOM</strong><p>The squad has reached {MAX_SQUAD} players. Review incoming bids in Squad before adding more names.</p></div><button className="rtg-button secondary" onClick={()=>go('squad')}>VIEW BIDS →</button></div>}
   {c.signed&&<div className="rtg-market-closed"><span>✓</span><div><strong>TRANSFER COMPLETED</strong><p>{c.lastSigning?.name} has joined {c.club}. The transfer window reopens after the next three matches.</p></div><button type="button" className="rtg-button primary" onClick={()=>go('signing')}>SEE THE SIGNING →</button></div>}
   {c.windowPassed&&<div className="rtg-market-closed"><span>£</span><div><strong>FUNDS HELD BACK</strong><p>You've kept {formatCash(c.budget)} for the next transfer window.</p></div></div>}
   <div className="rtg-market-grid">{c.market.map((candidate,i)=>{
@@ -137,7 +147,7 @@ function Market({c,act,go}){
     <div className="rtg-target-bottom"><div className="rtg-target-fee"><span>ASKING PRICE</span><strong>{formatCash(candidate.fee)}</strong></div>
      <div className="rtg-target-actions">{!c.scouted&&canBuy&&<button type="button" className="rtg-button ghost small" onClick={()=>act(s=>scoutPlayer(s,candidate.id))}>SCOUT FIRST</button>}
       {scouted&&<Pill tone="win">CEILING CONFIRMED</Pill>}
-      <button type="button" className="rtg-button primary small" disabled={!canBuy||!affordable} onClick={()=>{act(s=>signPlayer(s,candidate.id));go('signing');}}>{!affordable?'CAN’T AFFORD':!canBuy?'WINDOW CLOSED':'SIGN FOR '+formatCash(candidate.fee)+' →'}</button>
+      <button type="button" className="rtg-button primary small" disabled={!canBuy||!affordable} onClick={()=>{act(s=>signPlayer(s,candidate.id));go('signing');}}>{!affordable?'CAN’T AFFORD':c.roster.length>=MAX_SQUAD?'SQUAD FULL':!canBuy?'WINDOW CLOSED':'SIGN FOR '+formatCash(candidate.fee)+' →'}</button>
      </div></div>
    </article>;
   })}</div>
