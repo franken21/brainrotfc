@@ -1,12 +1,13 @@
 {
   "name": "brainrotfc-hub",
-  "version": "1.0.0",
-  "description": "Velg Spill - Game selector hub",
+  "version": "2.0.0",
+  "description": "Brainrot FC reloaded + game collection hub",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "test": "node --test tests/*.test.js",
+    "build": "npm test && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

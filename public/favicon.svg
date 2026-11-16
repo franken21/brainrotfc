@@ -1,5 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <circle cx="50" cy="50" r="45" fill="#0a0a0f"/>
-  <circle cx="50" cy="50" r="40" fill="#1a1a2e" stroke="#d4af37" stroke-width="3"/>
-  <text x="50" y="62" text-anchor="middle" font-size="40">⚽</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+<rect width="80" height="80" rx="19" fill="#14252b"/>
+<rect x="7" y="7" width="66" height="66" rx="14" fill="#e5ff73"/>
+<path d="M24 17h26q14 0 14 13 0 8-7 11 12 4 10 15-2 10-18 10H24V17zm15 13v8h9q4 0 4-4t-5-4zm0 19v8h10q5 0 5-4 0-4-5-4z" fill="#13262a"/>
+<path d="M55 10 45 30h9l-5 18 20-24H57l6-14Z" fill="#f6a13b" stroke="#14262a" stroke-width="2"/>
 </svg>
