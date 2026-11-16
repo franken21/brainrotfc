@@ -32,8 +32,8 @@ function Ball({className='',style={}}){
   <path d="M38 62 26 79M62 62 75 78" stroke="#172025" strokeWidth="3" opacity=".3"/>
  </svg>;
 }
-function Keeper({x=0.5,dive=false,league=0}){
- return <div className={'v2-keeper '+(dive?'v2-keeper-dive':'')} style={{left:(x*100)+'%', '--dive-angle':(x<.4?'-28deg':x>.6?'28deg':'0deg')}} aria-hidden="true">
+function Keeper({x=0.5,y=0.65,dive=false,league=0}){
+ return <div className={'v2-keeper '+(dive?'v2-keeper-dive':'')} style={{left:(x*100)+'%', bottom:(dive?Math.max(0,(.65-y)*100):0)+'%', '--dive-angle':(x<.4?'-28deg':x>.6?'28deg':'0deg')}} aria-hidden="true">
    <svg viewBox="0 0 120 140">
      <ellipse cx="60" cy="134" rx="42" ry="6" fill="#051e18" opacity=".18"/>
      <path d="M40 82 35 118 49 122 61 90 74 123 89 120 79 82Z" fill="#202a3c"/>
@@ -91,7 +91,7 @@ function GoalScene({aim,setAim,league,flight,phase,onShoot}){
      <div className="v2-goal-net"/>
      <div className="v2-goal-top"/>
      {phase==='ready'&&<div className="v2-aim-target" style={{left:(aim.x*100)+'%',top:(aim.y*100)+'%'}}><div className="v2-target-ring"/><div className="v2-target-dot"/></div>}
-     <Keeper x={phase==='flight'||phase==='result'?shot?.keeperX??.5:.5} dive={phase==='flight'||phase==='result'} league={LEAGUES.indexOf(league)}/>
+     <Keeper x={phase==='flight'||phase==='result'?shot?.keeperX??.5:.5} y={phase==='flight'||phase==='result'?shot?.keeperY??.65:.65} dive={phase==='flight'||phase==='result'} league={LEAGUES.indexOf(league)}/>
      <div className="v2-goal-hint">{phase==='ready'?'MOVE YOUR AIM · PICK A CORNER':' '}</div>
    </div>
    <div className="v2-spot"/>
@@ -118,8 +118,9 @@ function App(){
  const [match,setMatch]=useState(null);
  const [phase,setPhase]=useState('intro');
  const [aim,setAim]=useState({x:.74,y:.25});
- const [timing,setTiming]=useState(.5);
+ 
  const timingRef=useRef(.5);
+ const meterIndicatorRef=useRef(null);
  const timerRef=useRef(null);
  const [flight,setFlight]=useState(null);
  const [last,setLast]=useState(null);
@@ -139,7 +140,7 @@ function App(){
    const move=now=>{
      const t=((now-start)/1050)%2;
      const value=t<=1?t:2-t;
-     timingRef.current=value;setTiming(value);
+     timingRef.current=value;if(meterIndicatorRef.current)meterIndicatorRef.current.style.left=(value*100)+'%';
      frame=requestAnimationFrame(move);
    };
    frame=requestAnimationFrame(move);
@@ -194,8 +195,10 @@ function App(){
  const openPack=()=>{
   if(save.coins<PACK_PRICE){showNotice('Not enough coins — win shootouts to earn more!');return;}
   const cards=randomPack();
+  const previouslyOwned=new Set(save.owned);
+  const isNew=cards.map(card=>{const fresh=!previouslyOwned.has(card.id);previouslyOwned.add(card.id);return fresh;});
   const result=buyPack(save,cards);
-  setSave(result.save);setPack({cards,...result});setPackOpened(false);
+  setSave(result.save);setPack({cards,isNew,...result});setPackOpened(false);
   Sound({type:'pack',enabled:sound});
  };
  const changeView=id=>{
@@ -243,7 +246,7 @@ function App(){
              </div>
              <div className="v2-arena-controls">
                <div className="v2-aim-copy"><strong>01 / AIM</strong><span>Tap or move over the goal to place your target.</span></div>
-               <div className="v2-timing-controls"><div className="v2-meter-copy"><strong>02 / TIME IT</strong><span>Hit the bright green sweet spot</span></div><div className="v2-meter" aria-label="Moving timing indicator with green centre sweet spot"><div className="v2-meter-sweet"/><div className="v2-meter-perfect"/><div className="v2-meter-indicator" style={{left:(timing*100)+'%'}}/></div><div className="v2-meter-labels"><span>EARLY</span><span>PERFECT</span><span>LATE</span></div></div>
+               <div className="v2-timing-controls"><div className="v2-meter-copy"><strong>02 / TIME IT</strong><span>Hit the bright green sweet spot</span></div><div className="v2-meter" aria-label="Moving timing indicator with green centre sweet spot"><div className="v2-meter-sweet"/><div className="v2-meter-perfect"/><div className="v2-meter-indicator" ref={meterIndicatorRef} style={{left:'50%'}}/></div><div className="v2-meter-labels"><span>EARLY</span><span>PERFECT</span><span>LATE</span></div></div>
                <button className="v2-shoot-btn" disabled={phase!=='ready'} onClick={shoot}>⚽ <span>SHOOT!</span><small>SPACE / TAP</small></button>
              </div>
            </section>
@@ -261,7 +264,7 @@ function App(){
    </div>
    <nav className="v2-bottom-nav" aria-label="Mobile navigation">{[['play','⚽','PLAY'],['club','🎴','SQUAD'],['packs','🎁','PACKS'],['journey','🏆','LEAGUES']].map(([id,icon,label])=><button key={id} className={view===id?'active':''} onClick={()=>changeView(id)}><span>{icon}</span>{label}</button>)}</nav>
    {notice&&<div className="v2-toast" role="status">{notice}</div>}
-   {pack&&<div className="v2-pack-modal" role="dialog" aria-modal="true" aria-label="Pack opening"><div className="v2-pack-modal-inner">{!packOpened?<><span className="v2-eyebrow">✦ SOMETHING WILD IS COMING</span><div className="v2-pack-art v2-modal-pack"><div className="v2-pack-art-top">BRAINROT <b>FC</b></div><div className="v2-pack-art-ball">⚽</div><div className="v2-pack-art-sub">MYSTERY<br/>BALLERS</div></div><h2>ARE YOU READY?</h2><button className="v2-button-primary" onClick={()=>{setPackOpened(true);Sound({type:'goal',enabled:sound});}}>✦ REVEAL MY PLAYERS ✦</button></>:<><span className="v2-eyebrow">YOUR NEW DROP</span><h2>PACK OPENED!</h2><div className="v2-reveal-grid">{pack.cards.map((p,i)=><div className="v2-reveal-item" key={i} style={{animationDelay:(i*.14)+'s'}}><PlayerPortrait player={p} size="small"/><span className={'v2-rarity v2-rarity-'+p.rarity}>{RARITY[p.rarity].label}</span><strong>{p.name}</strong><small>{pack.newPlayers.includes(p.id)?'NEW PLAYER!':'DUPLICATE · +120 🟡'}</small></div>)}</div>{pack.refunds>0&&<p className="v2-refund">+{pack.refunds} coins returned for duplicates</p>}<button className="v2-button-primary" onClick={()=>{setPack(null);setView('club');}}>VIEW MY SQUAD ↗</button></>}</div></div>}
+   {pack&&<div className="v2-pack-modal" role="dialog" aria-modal="true" aria-label="Pack opening"><div className="v2-pack-modal-inner">{!packOpened?<><span className="v2-eyebrow">✦ SOMETHING WILD IS COMING</span><div className="v2-pack-art v2-modal-pack"><div className="v2-pack-art-top">BRAINROT <b>FC</b></div><div className="v2-pack-art-ball">⚽</div><div className="v2-pack-art-sub">MYSTERY<br/>BALLERS</div></div><h2>ARE YOU READY?</h2><button className="v2-button-primary" onClick={()=>{setPackOpened(true);Sound({type:'goal',enabled:sound});}}>✦ REVEAL MY PLAYERS ✦</button></>:<><span className="v2-eyebrow">YOUR NEW DROP</span><h2>PACK OPENED!</h2><div className="v2-reveal-grid">{pack.cards.map((p,i)=><div className="v2-reveal-item" key={i} style={{animationDelay:(i*.14)+'s'}}><PlayerPortrait player={p} size="small"/><span className={'v2-rarity v2-rarity-'+p.rarity}>{RARITY[p.rarity].label}</span><strong>{p.name}</strong><small>{pack.isNew[i]?'NEW PLAYER!':'DUPLICATE · +120 🟡'}</small></div>)}</div>{pack.refunds>0&&<p className="v2-refund">+{pack.refunds} coins returned for duplicates</p>}<button className="v2-button-primary" onClick={()=>{setPack(null);setView('club');}}>VIEW MY SQUAD ↗</button></>}</div></div>}
  </div>;
 }
 export default App;
