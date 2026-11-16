@@ -222,24 +222,30 @@ function Match({c,onFinish}){
  </div>;
 }
 function Report({c,onContinue}){
- const r=c.report,club=CLUBS.find(x=>x.id===c.id),supportersChange=r.supportersChange??0,formChange=r.momentumChange??0,repChange=r.reputationChange??0;
- const crowd=r.result==='WIN'?'THE TOWN IS ROARING.':r.result==='DRAW'?'THE FANS STAND WITH YOU.':'THE FANS EXPECT A RESPONSE.';
- return <div className="rtg-flow rtg-reportview">
-  <div className="rtg-result-header"><span className="rtg-eyebrow">FULL TIME · ROUND {r.fixture.round}</span><h1 className={r.result==='WIN'?'wintext':r.result==='LOSS'?'losstext':''}>{r.result==='WIN'?'THREE POINTS!':r.result==='LOSS'?'BACK TO WORK.':'A HARD-FOUGHT POINT.'}</h1></div>
-  <div className="rtg-matchscore result"><div><Badge club={club}/><strong>{c.club}</strong></div><span>{r.ours} <small>–</small> {r.theirs}</span><div><RivalBadge rival={r.fixture.opp}/><strong>{r.fixture.opp.name}</strong></div></div>
-  <div className={'rtg-crowd-pulse '+(r.result==='WIN'?'celebrate':'')}><div className="rtg-crowd-icon">♬ <span>◉</span> ♬</div><div><span className="rtg-eyebrow">IN THE STANDS</span><h2>{crowd}</h2><p>{r.result==='WIN'?'Victory travels fast. More fans are turning up every week. Strong form and a bigger home crowd will help you next match.':r.result==='DRAW'?'The supporters can see your team fighting.':'A tough afternoon. Turn it around next week.'}</p></div></div>
-  {r.promotions?.length>0&&<div className="rtg-promotion-alert"><span>✦ NEW FIRST-TEAM PLAYER</span><strong>{r.promotions.join(' · ')}</strong><p>A youngster has trained his way into the starting XI.</p></div>}
-  <div className="rtg-result-stats rtg-match-rewards">
-   <div><span>SUPPORTERS</span><strong>{c.supporters.toLocaleString('en-GB')}</strong><em className={supportersChange>=0?'rtg-positive':'rtg-negative'}>{supportersChange>=0?'+':''}{supportersChange} fans</em></div>
-   <div><span>CLUB FORM</span><strong>{c.momentum}/100</strong><em className={formChange>=0?'rtg-positive':'rtg-negative'}>{formChange>=0?'+':''}{formChange} this match</em></div>
-   <div><span>REPUTATION</span><strong>{c.reputation}/100</strong><em className={repChange>=0?'rtg-positive':'rtg-negative'}>{repChange>=0?'+':''}{repChange} standing</em></div>
+ const r=c.report,club=CLUBS.find(x=>x.id===c.id);
+ const positive=r.result==='WIN';
+ const resultText=positive?'THREE POINTS!':r.result==='DRAW'?'POINT EARNED.':'WE GO AGAIN.';
+ const developments=[...(r.promotions||[]),...(r.youth||[]),...(r.growth||[])];
+ return <div className="rtg-flow rtg-reportview rtg-reportcompact">
+  <div className="rtg-result-header"><div><span className="rtg-eyebrow">FULL TIME · MATCH {r.fixture.round}/18</span><h1 className={positive?'wintext':r.result==='LOSS'?'losstext':''}>{resultText}</h1></div>
+   <button type="button" className="rtg-button primary rtg-report-top-action" onClick={onContinue}>{c.seasonComplete?'END OF SEASON':c.checkpoint?'CHAPTER REWARD':'CONTINUE'} →</button>
   </div>
-  <div className="rtg-result-stats"><div><span>LEAGUE POSITION</span><strong>{ordinal(r.tablePosition)}</strong></div><div><span>MATCHDAY INCOME</span><strong>{formatCash(r.earned)}</strong></div><div><span>MATCH HERO</span><strong className="rtg-stat-small">{r.topScorer||'The Team'}</strong></div></div>
-  {(r.growth.length>0||r.youth?.length>0)&&<div className="rtg-growthbox"><span>✦ DEVELOPMENT REPORT</span>{r.growth.length>0&&<strong>{r.growth.join(' · ')}</strong>}{r.youth?.length>0&&<div className="rtg-bench-growth"><span>YOUTH TRAINING</span><strong>{r.youth.join(' · ')}</strong></div>}<small>Young reserves grow even without match minutes.</small></div>}
-  <div className="rtg-panel rtg-report-highlights"><div className="rtg-panel-top"><span className="rtg-eyebrow">MATCH HIGHLIGHTS</span><span className="rtg-small">90 MINUTES</span></div><div className="rtg-commentary report">{r.events.filter(e=>e.goal).length?r.events.filter(e=>e.goal).map((e,i)=><div key={i} className="rtg-event goal"><span>{e.minute}'</span><p>{e.side==='you'?'⚽ '+e.name+' scores!':'⚑ '+r.fixture.opp.name+' score.'}</p></div>):<p className="rtg-empty">Neither side found the net.</p>}</div></div>
-  <button type="button" className="rtg-button primary xl rtg-report-continue" onClick={onContinue}>{c.seasonComplete?'SEE FINAL LEAGUE TABLE':c.checkpoint?'OPEN YOUR CHAPTER REWARD':'BACK TO CLUBHOUSE'} <span>→</span></button>
+  <div className="rtg-matchscore result"><div><Badge club={club}/><strong>{c.club}</strong></div><span>{r.ours} <small>–</small> {r.theirs}</span><div><RivalBadge rival={r.fixture.opp}/><strong>{r.fixture.opp.name}</strong></div></div>
+  {c.currentTrophy&&<div className="rtg-match-honour"><span>{c.currentTrophy.icon}</span><strong>CHAMPIONS! {c.currentTrophy.label.toUpperCase()} · TROPHY ADDED TO CABINET</strong></div>}
+  <div className={'rtg-crowd-pulse '+(positive?'celebrate':'')}><div className="rtg-crowd-icon">♬ <span>◉</span> ♬</div><div><span className="rtg-eyebrow">FROM THE TERRACES</span><h2>{positive?'THE TOWN IS ROARING.':r.result==='DRAW'?'THE SUPPORTERS STAND WITH YOU.':'TIME TO BOUNCE BACK.'}</h2><p>{positive?'Your supporters and club form have grown.':r.result==='DRAW'?'A point on the board, and more to come.':'The next match is a chance to turn it around.'}</p></div></div>
+  <div className="rtg-result-stats rtg-fulltime-stats">
+   <div><span>LEAGUE</span><strong>{ordinal(r.tablePosition)}</strong></div>
+   <div><span>SUPPORTERS</span><strong>{c.supporters.toLocaleString('en-GB')}</strong><em className={r.supportersChange>=0?'rtg-positive':'rtg-negative'}>{r.supportersChange>0?'+':''}{r.supportersChange}</em></div>
+   <div><span>CLUB FORM</span><strong>{c.momentum}</strong><em className={r.momentumChange>=0?'rtg-positive':'rtg-negative'}>{r.momentumChange>0?'+':''}{r.momentumChange}</em></div>
+   <div><span>REPUTATION</span><strong>{c.reputation}</strong><em className={r.reputationChange>=0?'rtg-positive':'rtg-negative'}>{r.reputationChange>0?'+':''}{r.reputationChange}</em></div>
+   <div><span>INCOME</span><strong>{formatCash(r.earned)}</strong></div>
+   <div><span>MATCH HERO</span><strong className="rtg-stat-small">{r.topScorer||'The Team'}</strong></div>
+  </div>
+  {developments.length>0&&<div className="rtg-postmatch-develop"><span>✦ PLAYER DEVELOPMENT</span><strong>{developments.slice(0,4).join(' · ')}</strong>{developments.length>4&&<small>+{developments.length-4} others</small>}</div>}
+  <details className="rtg-match-details"><summary>90' MATCH HIGHLIGHTS <span>⌄</span></summary><div className="rtg-commentary report">{r.events.filter(e=>e.goal).length?r.events.filter(e=>e.goal).map((e,i)=><div key={i} className="rtg-event goal"><span>{e.minute}'</span><p>{e.side==='you'?'⚽ '+e.name+' scores!':'⚑ '+r.fixture.opp.name+' score.'}</p></div>):<p className="rtg-empty">Neither side found the net.</p>}</div></details>
  </div>;
 }
+
 function SigningReveal({c,go}){
  const s=c.lastSigning;if(!s)return null;
  const gains=[{label:'ATTACK',n:s.attack},{label:'DEFENCE',n:s.defence},{label:'TEAM OVR',n:s.overall}];
