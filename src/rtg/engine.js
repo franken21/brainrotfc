@@ -204,7 +204,7 @@ function createSaleOffers(c){
  const stars=eligible.filter(p=>starters.has(p.id)).sort((a,b)=>b.ovr-a.ovr);
  const offers=[];
  if(bench[0])offers.push({id:bench[0].id,fee:saleValue(c,bench[0]),kind:'FRINGE PLAYER',buyer:'Northport Athletic'});
- if(stars[0]&&c.round>=3)offers.push({id:stars[0].id,fee:saleValue(c,stars[0],true),kind:'BIG CLUB BID',buyer:c.tier===2?'Royal Academy':'Capital City FC'});
+ if(stars[0]&&c.round>=3&&rand(c)<(c.roster.length>=18?.6:.33))offers.push({id:stars[0].id,fee:saleValue(c,stars[0],true),kind:'BIG CLUB BID',buyer:c.tier===2?'Royal Academy':'Capital City FC'});
  return offers;
 }
 export function sellPlayer(input,id){
