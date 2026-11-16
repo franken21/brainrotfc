@@ -184,23 +184,31 @@ function Almanac({game,onImport}){
   <div className="rtg-savebox"><div><strong>Your save belongs to you.</strong><p>Everything saves automatically in this browser. Export a backup to move it to another device. No login, no server, no tracking.</p></div><div className="rtg-save-actions"><button type="button" className="rtg-button secondary" onClick={exportSave}>↓ EXPORT SAVE</button><button type="button" className="rtg-button secondary" onClick={()=>fileRef.current?.click()}>↑ IMPORT SAVE</button><input ref={fileRef} type="file" accept=".json,application/json" onChange={importSave} hidden/></div></div>
  </div>;
 }
-function Prematch({c,onStart,onTactic,onQuick,go}){
- const f=nextFixture(c),club=CLUBS.find(x=>x.id===c.id),stats=profile(c),boost=clubBoost(c,f?.home);
+function Prematch({c,onStart,onTactic,go}){
+ const f=nextFixture(c),club=CLUBS.find(x=>x.id===c.id),stats=profile(c),boost=clubBoost(c,f?.home),youth=growthWatch(c)[0];
  if(!f)return null;
  const styles=[
-  {id:'balanced',icon:'◆',title:'Balanced',effect:'Even in attack and defence',foot:'Trust the players'},
-  {id:'press',icon:'↗',title:'High Press',effect:'ATT +8 · DEF −6',foot:'More chances. More space behind.'},
-  {id:'counter',icon:'↯',title:'Counter',effect:'ATT +2 · DEF +5',foot:'Stay solid. Hit them on the break.'}
+  {id:'balanced',icon:'◆',title:'Balanced',effect:'Solid control'},
+  {id:'press',icon:'↗',title:'High Press',effect:'Attacking intent'},
+  {id:'counter',icon:'↯',title:'Counter',effect:'Stay compact'}
  ];
+ const rivalStyle=f.opp.style||'balanced',matchup=tacticalMatchup(c.tactic,rivalStyle);
+ const best=styles.map(st=>({style:st,...tacticalMatchup(st.id,rivalStyle)})).sort((a,b)=>b.advantage-a.advantage)[0];
  return <div className="rtg-flow rtg-prematch">
-  <div className="rtg-prematch-heading"><span className="rtg-eyebrow">MATCHDAY {f.round} / 18 · {f.home?'HOME':'AWAY'} · SEASON {c.season}</span><h1>It's matchday.</h1><p>The team is in. The fans are arriving. Pick your approach, then blow the whistle.</p><div className="rtg-matchday-bonuses"><span>◆ FORM {boost.confidence>=0?'+':''}{boost.confidence}</span><span>♬ HOME CROWD +{boost.crowd}</span><span>★ REPUTATION {c.reputation}</span></div></div>
-  <div className="rtg-matchscore rtg-matchscore-before"><div><Badge club={club}/><strong>{c.club}</strong><small>ATT {stats.attack} / DEF {stats.defence}</small></div><span>VS</span><div><span className="rtg-rivalbadge">⚑</span><strong>{f.opp.name}</strong><small>TEAM {Math.round(f.opp.strength)}</small></div></div>
-  <section className="rtg-panel rtg-prematch-plan"><div className="rtg-panel-top"><span className="rtg-eyebrow">01 / PICK A MATCH PLAN</span><Pill tone={c.tacticChosen?'win':''}>{c.tacticChosen?'PLAN SELECTED':'YOUR CALL'}</Pill></div>
-    <div className="rtg-plan-cards">{styles.map(st=><button type="button" className={'rtg-plan-card '+(c.tactic===st.id?'selected':'')} key={st.id} onClick={()=>onTactic(st.id)}>
-      <span className="rtg-plan-icon">{st.icon}</span><strong>{st.title}</strong><b>{st.effect}</b><small>{st.foot}</small>{c.tactic===st.id&&<span className="rtg-plan-selected">✓ SELECTED</span>}
-    </button>)}</div>
-   </section>
-  <div className="rtg-ready-kickoff"><div><span className="rtg-eyebrow">02 / THE REFEREE IS READY</span><strong>First half: 0′ → 45′</strong><p>We'll play the first half, show you the score and chances, then you'll make a halftime decision.</p></div><div className="rtg-kickoff-actions"><button type="button" className="rtg-button primary xl" onClick={onStart}>▶ PLAY FIRST HALF →</button><button type="button" className="rtg-button ghost small" onClick={onQuick}>QUICK SIM ALL 90′</button></div></div>
+  <DivisionBanner c={c} compact/>
+  <div className="rtg-prematch-heading"><span className="rtg-eyebrow">ROUND {f.round} / 18 · {f.home?'AT HOME':'AWAY AT '+(f.opp.venue||'THE STADIUM').toUpperCase()}</span><h1>{f.opp.nickname||'The next challenge'}.</h1><p>{DIVISION_CONFIG[c.tier].description}</p><div className="rtg-matchday-bonuses"><span>◆ FORM {boost.confidence>=0?'+':''}{boost.confidence}</span><span>♬ CROWD +{boost.crowd}</span><span>★ REP {c.reputation}</span></div></div>
+  <div className="rtg-matchscore rtg-matchscore-before"><div><Badge club={club}/><strong>{c.club}</strong><small>ATT {stats.attack} / DEF {stats.defence}</small></div><span>VS</span><div><RivalBadge rival={f.opp}/><strong>{f.opp.name}</strong><small>{Math.round(f.opp.strength)} OVR · {rivalStyle.toUpperCase()}</small></div></div>
+  <div className="rtg-opponent-scout">
+   <div className="rtg-opponent-mark" style={{'--rival-ink':f.opp.color||'#9eaeaa'}}>◈</div>
+   <div><span className="rtg-eyebrow">SCOUTING REPORT · {f.opp.name.toUpperCase()}</span><h2>{f.opp.trait||'Tough opposition'}</h2><p>{rivalStyle==='press'?'They hunt the ball high up the pitch. There is space behind them.':rivalStyle==='counter'?'They sit deep and explode forward when you lose possession.':'A well-drilled side that makes you work for every chance.'}</p></div>
+   <div className="rtg-scout-tip"><small>YOUR {TACTICS[c.tactic].label.toUpperCase()} STYLE</small><strong className={matchup.advantage>0?'rtg-positive':matchup.advantage<0?'rtg-negative':''}>{matchup.label}</strong><span>{best.style.id!==c.tactic?'Opportunity: '+best.style.title+' would counter their approach.':'Your usual approach suits this opponent.'}</span></div>
+  </div>
+  <section className="rtg-panel rtg-prematch-plan"><div className="rtg-panel-top"><span className="rtg-eyebrow">YOUR CLUB IDENTITY</span><Pill tone="lime">{TACTICS[c.tactic].label.toUpperCase()} · SAVED</Pill></div>
+   <p className="rtg-subcopy">Your style carries into every match. Keep it unless the scouting report gives you a reason to switch.</p>
+   <div className="rtg-plan-cards">{styles.map(st=>{const edge=tacticalMatchup(st.id,rivalStyle);return <button type="button" className={'rtg-plan-card '+(c.tactic===st.id?'selected':'')} key={st.id} onClick={()=>onTactic(st.id)}>
+    <span className="rtg-plan-icon">{st.icon}</span><strong>{st.title}</strong><b className={edge.advantage>0?'rtg-positive':edge.advantage<0?'rtg-negative':''}>{edge.advantage>0?'+':''}{edge.advantage} MATCHUP ATT</b><small>{st.effect}</small>{c.tactic===st.id&&<span className="rtg-plan-selected">✓ YOUR STYLE</span>}</button>})}</div>
+  </section>
+  <div className="rtg-ready-kickoff"><div><span className="rtg-eyebrow">THE MANAGER HAS SPOKEN</span><strong>Everything is decided before kickoff.</strong><p>{youth?youth.name+' is developing with the reserves while your first team chases three points.':'The first team is ready for 90 minutes.'} No halftime interruptions.</p></div><div className="rtg-kickoff-actions"><button type="button" className="rtg-button primary xl" onClick={onStart}>▶ PLAY FULL MATCH →</button></div></div>
   <button type="button" className="rtg-textbutton rtg-prematch-back" onClick={()=>go('home')}>← BACK TO CLUBHOUSE</button>
  </div>;
 }
@@ -226,15 +234,16 @@ function Report({c,onContinue}){
  const crowd=r.result==='WIN'?'THE TOWN IS ROARING.':r.result==='DRAW'?'THE FANS STAND WITH YOU.':'THE FANS EXPECT A RESPONSE.';
  return <div className="rtg-flow rtg-reportview">
   <div className="rtg-result-header"><span className="rtg-eyebrow">FULL TIME · ROUND {r.fixture.round}</span><h1 className={r.result==='WIN'?'wintext':r.result==='LOSS'?'losstext':''}>{r.result==='WIN'?'THREE POINTS!':r.result==='LOSS'?'BACK TO WORK.':'A HARD-FOUGHT POINT.'}</h1></div>
-  <div className="rtg-matchscore result"><div><Badge club={club}/><strong>{c.club}</strong></div><span>{r.ours} <small>–</small> {r.theirs}</span><div><span className="rtg-rivalbadge">⚑</span><strong>{r.fixture.opp.name}</strong></div></div>
+  <div className="rtg-matchscore result"><div><Badge club={club}/><strong>{c.club}</strong></div><span>{r.ours} <small>–</small> {r.theirs}</span><div><RivalBadge rival={r.fixture.opp}/><strong>{r.fixture.opp.name}</strong></div></div>
   <div className={'rtg-crowd-pulse '+(r.result==='WIN'?'celebrate':'')}><div className="rtg-crowd-icon">♬ <span>◉</span> ♬</div><div><span className="rtg-eyebrow">IN THE STANDS</span><h2>{crowd}</h2><p>{r.result==='WIN'?'Victory travels fast. More fans are turning up every week. Strong form and a bigger home crowd will help you next match.':r.result==='DRAW'?'The supporters can see your team fighting.':'A tough afternoon. Turn it around next week.'}</p></div></div>
+  {r.promotions?.length>0&&<div className="rtg-promotion-alert"><span>✦ NEW FIRST-TEAM PLAYER</span><strong>{r.promotions.join(' · ')}</strong><p>A youngster has trained his way into the starting XI.</p></div>}
   <div className="rtg-result-stats rtg-match-rewards">
    <div><span>SUPPORTERS</span><strong>{c.supporters.toLocaleString('en-GB')}</strong><em className={supportersChange>=0?'rtg-positive':'rtg-negative'}>{supportersChange>=0?'+':''}{supportersChange} fans</em></div>
    <div><span>CLUB FORM</span><strong>{c.momentum}/100</strong><em className={formChange>=0?'rtg-positive':'rtg-negative'}>{formChange>=0?'+':''}{formChange} this match</em></div>
    <div><span>REPUTATION</span><strong>{c.reputation}/100</strong><em className={repChange>=0?'rtg-positive':'rtg-negative'}>{repChange>=0?'+':''}{repChange} standing</em></div>
   </div>
   <div className="rtg-result-stats"><div><span>LEAGUE POSITION</span><strong>{ordinal(r.tablePosition)}</strong></div><div><span>MATCHDAY INCOME</span><strong>{formatCash(r.earned)}</strong></div><div><span>MATCH HERO</span><strong className="rtg-stat-small">{r.topScorer||'The Team'}</strong></div></div>
-  {r.growth.length>0&&<div className="rtg-growthbox"><span>✦ DEVELOPMENT REPORT</span><strong>{r.growth.join(' · ')}</strong><small>Your players are getting better with match experience.</small></div>}
+  {(r.growth.length>0||r.youth?.length>0)&&<div className="rtg-growthbox"><span>✦ DEVELOPMENT REPORT</span>{r.growth.length>0&&<strong>{r.growth.join(' · ')}</strong>}{r.youth?.length>0&&<div className="rtg-bench-growth"><span>YOUTH TRAINING</span><strong>{r.youth.join(' · ')}</strong></div>}<small>Young reserves grow even without match minutes.</small></div>}
   <div className="rtg-panel rtg-report-highlights"><div className="rtg-panel-top"><span className="rtg-eyebrow">MATCH HIGHLIGHTS</span><span className="rtg-small">90 MINUTES</span></div><div className="rtg-commentary report">{r.events.filter(e=>e.goal).length?r.events.filter(e=>e.goal).map((e,i)=><div key={i} className="rtg-event goal"><span>{e.minute}'</span><p>{e.side==='you'?'⚽ '+e.name+' scores!':'⚑ '+r.fixture.opp.name+' score.'}</p></div>):<p className="rtg-empty">Neither side found the net.</p>}</div></div>
   <button type="button" className="rtg-button primary xl rtg-report-continue" onClick={onContinue}>{c.seasonComplete?'SEE FINAL LEAGUE TABLE':c.checkpoint?'OPEN YOUR CHAPTER REWARD':'BACK TO CLUBHOUSE'} <span>→</span></button>
  </div>;
