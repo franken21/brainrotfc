@@ -154,7 +154,7 @@ function App(){
    Sound({enabled:sound});
    setMatch({shots:[],rivals:[]});
    setSummary(null);setLast(null);setFlight(null);
-   setAim({x:.73,y:.24});setPhase('ready');setView('play');
+   setPhase('ready');setView('play');
  };
  const shoot=useCallback(()=>{
    if(phase!=='ready'||!match||!aimLocked)return;
@@ -222,7 +222,7 @@ function App(){
    'Floodlights. Noise. A proper stadium. Every shot is a chance to write the next chapter of the strangest football story ever told.',
    'From a backstreet goal to the biggest game in the world. One team of complete weirdos. One final shot at immortality.'
  ];
- return <div className="v2-app">
+ return <div className={'v2-app v2-app-'+view}>
    <aside className="v2-side">
      <button className="v2-logo" onClick={()=>navigate('/')} aria-label="Go to home"><span className="v2-logo-mark">B<span>⚡</span></span><span>BRAINROT <b>FC</b><small>THE SHOOTOUT CLUB</small></span></button>
      <div className="v2-side-kicker">THE CLUBHOUSE</div>
