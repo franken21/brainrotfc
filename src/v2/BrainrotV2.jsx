@@ -91,11 +91,11 @@ function GoalScene({aim,setAim,league,flight,phase,onShoot}){
      <div className="v2-goal-net"/>
      <div className="v2-goal-top"/>
      {phase==='ready'&&<div className="v2-aim-target" style={{left:(aim.x*100)+'%',top:(aim.y*100)+'%'}}><div className="v2-target-ring"/><div className="v2-target-dot"/></div>}
-     <Keeper x={phase==='flight'||phase==='result'?shot?.keeperX??.5:.5} y={phase==='flight'||phase==='result'?shot?.keeperY??.65:.65} dive={phase==='flight'||phase==='result'} league={LEAGUES.indexOf(league)}/>
+     <Keeper x={phase==='flight'||phase==='result'?shot?.keeperX??.5:.5} y={phase==='flight'||phase==='result'?shot?.keeperY??.65:.65} dive={(phase==='flight'||phase==='result')&&!shot?.frozen} league={LEAGUES.indexOf(league)}/>
      <div className="v2-goal-hint">{phase==='ready'?'MOVE YOUR AIM · PICK A CORNER':' '}</div>
    </div>
    <div className="v2-spot"/>
-   {phase==='flight'&&<Ball className="v2-flying-ball" style={{'--shot-x':left,'--shot-y':top}}/>}
+   {phase==='flight'&&<Ball className="v2-flying-ball" style={{'--shot-x':left,'--shot-y':top,animationDuration:shot?.frozen?'.84s':undefined}}/>}
    {phase!=='flight'&&<div className="v2-idle-ball"><Ball/></div>}
    <div className="v2-scenebottom"><span>◉ LIVE FROM {league.venue}</span><span className="v2-live-dot">● LIVE</span></div>
  </div>;
@@ -134,7 +134,7 @@ function App(){
  const showNotice=msg=>{setNotice(msg);setTimeout(()=>setNotice(''),2900);};
  useEffect(()=>{try{localStorage.setItem(SAVE_KEY,JSON.stringify(save));}catch{}},[save]);
  useEffect(()=>{
-   if(phase!=='ready')return;
+   if(phase!=='ready'||view!=='play')return;
    let frame;
    const start=performance.now();
    const move=now=>{
@@ -145,7 +145,7 @@ function App(){
    };
    frame=requestAnimationFrame(move);
    return ()=>cancelAnimationFrame(frame);
- },[phase]);
+ },[phase,view]);
  useEffect(()=>()=>clearTimeout(timerRef.current),[]);
  const startMatch=()=>{
    Sound({enabled:sound});
@@ -172,7 +172,7 @@ function App(){
    if(completed){
      const won=goals>opponent;
      const streak=match.shots.reduce((a,s)=>s.outcome==='GOAL'?a+1:0,0);
-     const outcome=settleMatch(save,save.league,won,goals,streak);
+     const outcome=settleMatch(save,save.league,won,goals,streak,player.style);
      setSave(outcome.save);
      setSummary({won,goals,opponent,...outcome});
      setPhase('finished');
