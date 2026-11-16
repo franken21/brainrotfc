@@ -6,7 +6,7 @@ import {
  chapterChoice,advanceSeason,archiveCareer,standings,seasonSummary
 } from '../src/rtg/engine.js';
 
-test('twelve clubs create complete and distinct valid careers',()=>{
+test('thirteen clubs create complete and distinct valid careers',()=>{
  const values=CLUBS.map(club=>{
   const s=startCareer(freshState(),club.id,101);
   assert.ok(validState(s));assert.equal(s.career.roster.length,15);
@@ -15,7 +15,7 @@ test('twelve clubs create complete and distinct valid careers',()=>{
   assert.equal(s.career.table.length,10);
   return s.career.budget;
  });
- assert.equal(CLUBS.length,12);
+ assert.equal(CLUBS.length,13);
  assert.ok(new Set(values).size>=7,'budgets have genuinely different levels');
 });
 test('five-target transfer shortlist has no phantom signings and respects budget',()=>{
@@ -319,7 +319,7 @@ test('trophies unlock only for genuine league titles and survive a new career',(
  assert.equal(s.career.currentTrophy,null);
  assert.ok(validState(JSON.parse(JSON.stringify(s))));
 });
-test('starting shortlist rotates across 12 different club identities',()=>{
+test('starting shortlist rotates across 13 different club identities',()=>{
  const all=new Set();
  for(let n=0;n<12;n++){
   const short=startingChoices(51983,n);
