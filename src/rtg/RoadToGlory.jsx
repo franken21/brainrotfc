@@ -26,8 +26,17 @@ function Pitch({eleven,compact=false,club}){
   <span className="rtg-pitch-bottom">NORTH END · HOME</span>
  </div>;
 }
-function Landing({legacy,onStart}){
- const [selection,setSelection]=useState(null);
+function Landing({legacy,onStart,onImport}){
+ const [selection,setSelection]=useState(null),importRef=useRef(null);
+ async function restoreBackup(event){
+  const file=event.target.files?.[0];if(!file)return;
+  try{
+   const saved=migrateState(JSON.parse(await file.text()));
+   if(!validState(saved))throw Error('Not a valid Road to Glory save');
+   onImport(saved);
+  }catch(error){window.alert('Unable to import career: '+error.message);}
+  event.target.value='';
+ }
  return <div className="rtg-landing">
   <div className="rtg-landing-top"><a href="/" className="rtg-backlink">← BRAINROT FC</a><span>ROAD TO GLORY / POCKET EDITION</span></div>
   <div className="rtg-landing-inner">
@@ -39,7 +48,7 @@ function Landing({legacy,onStart}){
      <h3>{club.name}</h3><p>{club.weak}</p>
      <div className="rtg-clubchoice-bottom"><span>STARTING FUNDS <b>{formatCash(club.budget)}</b></span><span className="rtg-select-dot">{selection===club.id?'✓':'↗'}</span></div>
     </button>)}</div>
-   <div className="rtg-landing-actions"><button type="button" className="rtg-button primary xl" disabled={!selection} onClick={()=>onStart(selection)}>BEGIN YOUR CAREER <span>→</span></button><small>Free. Local saves. Your club, your decisions.</small></div>
+   <div className="rtg-landing-actions"><button type="button" className="rtg-button primary xl" disabled={!selection} onClick={()=>onStart(selection)}>BEGIN YOUR CAREER <span>→</span></button><button type="button" className="rtg-button secondary xl" onClick={()=>importRef.current?.click()}>↑ CONTINUE FROM SAVE</button><input ref={importRef} hidden type="file" accept=".json,application/json" onChange={restoreBackup}/><small>Stored in your browser. No account needed.</small></div>
    {legacy.runs.length>0&&<div className="rtg-returning"><span className="rtg-eyebrow">YOUR FOOTBALL LEGACY</span><strong>{legacy.runs.length} completed career{legacy.runs.length===1?'':'s'} · {legacy.legends.length} players immortalised</strong><p>Your history stays with you across new runs.</p></div>}
   </div>
  </div>;
@@ -284,7 +293,7 @@ export default function RoadToGlory(){
  const quickMatch=()=>{act(quickSim);go('result');};
  const archive=()=>{act(archiveCareer);go('home');};
  const importGame=s=>{setGame(s);go('home');setNotice('Save imported successfully.');};
- if(!c)return <Landing legacy={game.legacy} onStart={start}/>;
+ if(!c)return <Landing legacy={game.legacy} onStart={start} onImport={importGame}/>;
  const club=CLUBS.find(x=>x.id===c.id);
  let activeView=c.report&&view==='result'?'result':c.match&&view==='match'?'match':view;
  if(!['home','market','squad','league','almanac','result','match','prematch','signing','checkpoint','chapter-reward','season'].includes(activeView))activeView='home';
