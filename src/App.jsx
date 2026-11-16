@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import MessiVsRonaldo from './pages/MessiVsRonaldo';
 import BrainrotV2 from './v2/BrainrotV2';
 import MatchPrototype from './pages/MatchPrototype';
+import RoadToGlory from './rtg/RoadToGlory';
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
       <Route path="/game" element={<BrainrotV2 />} />
       <Route path="/messi-vs-ronaldo" element={<MessiVsRonaldo />} />
       <Route path="/prototype" element={<MatchPrototype />} />
+      <Route path="/road-to-glory" element={<RoadToGlory />} />
       <Route path="*" element={<BrainrotV2 />} />
     </Routes>
   );
