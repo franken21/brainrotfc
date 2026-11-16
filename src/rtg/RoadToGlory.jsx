@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
-import {CLUBS,DIVISIONS,ROLES,TACTICS,SAVE_KEY,VERSION,freshState,startCareer,lineup,profile,teamRating,nextFixture,standings,signPlayer,scoutPlayer,chooseTactic,kickoff,finishMatch,quickSim,dismissReport,chapterChoice,advanceSeason,archiveCareer,seasonSummary,formatCash,ordinal,validState,transferPreview,passMarket,migrateState,clubBoost} from './engine.js';
+import {CLUBS,DIVISIONS,DIVISION_CONFIG,MAX_SQUAD,ROLES,TACTICS,SAVE_KEY,VERSION,freshState,startCareer,lineup,profile,teamRating,nextFixture,standings,signPlayer,scoutPlayer,chooseTactic,kickoff,finishMatch,quickSim,dismissReport,chapterChoice,advanceSeason,archiveCareer,seasonSummary,formatCash,ordinal,validState,transferPreview,passMarket,migrateState,clubBoost,growthWatch,sellPlayer,tacticalMatchup} from './engine.js';
 import './road-to-glory.css';
 
 function loadGame(){
@@ -12,11 +12,13 @@ const FORMATION=[[50,86],[12,67],[37,67],[63,67],[88,67],[35,47],[65,47],[50,36]
 const stageLabels=['MAKE YOUR MARK','FIND YOUR FEET','BUILD MOMENTUM','CHASE THE TOP','THE RUN-IN','THE FINAL PUSH'];
 
 function Badge({club,size=''}){return <span className={'rtg-crest '+size} style={{'--crest-a':club?.colors?.[0]||'#d8fe73','--crest-b':club?.colors?.[1]||'#234c39'}}>{club?.crest||'✦'}</span>}
+function RivalBadge({rival}){return <span className="rtg-rivalbadge rtg-rivalbadge-painted" style={{'--rival-ink':rival?.color||'#9cb7a4'}}>◈</span>}
+function DivisionBanner({c,compact=false}){const d=DIVISION_CONFIG[c.tier];return <div className={'rtg-stage-banner '+(compact?'compact':'')}><div className="rtg-stage-seal">{d.icon}</div><div><span>DIVISION {c.tier+1} / 3 · SEASON {c.season}</span><strong>{DIVISIONS[c.tier]}</strong><small>{d.subtitle} · {d.description}</small></div><div className="rtg-stage-meter">{DIVISION_CONFIG.map((o,i)=><span key={o.key} className={i<=c.tier?'lit':''}>{o.icon}</span>)}</div></div>}
 function Pill({children,tone=''}){return <span className={'rtg-pill '+tone}>{children}</span>}
 function Cash({n}){return <span>{formatCash(n)}</span>}
 function DotStat({label,value,small}){return <div className="rtg-stat"><span>{label}</span><strong className={small?'rtg-stat-small':''}>{value}</strong></div>}
 function SectionHead({eyebrow,title,right}){return <div className="rtg-sectionhead"><div><span className="rtg-eyebrow">{eyebrow}</span><h2>{title}</h2></div>{right}</div>}
-function PlayerTag({p,muted=false}){return <div className={'rtg-playername '+(muted?'muted':'')}><span className="rtg-role">{p.role}</span><div><strong>{p.name}</strong><small>{p.age} yrs · POT {p.potential}</small></div><b className="rtg-rating">{p.ovr}</b></div>}
+function PlayerTag({p,muted=false}){return <div className={'rtg-playername '+(muted?'muted':'')}><span className="rtg-role">{p.role}</span><div><strong>{p.name}</strong><small>{p.age} yrs · POT {p.potential} · +{p.growth||0} grown</small></div><b className="rtg-rating">{p.ovr}</b></div>}
 function Pitch({eleven,compact=false,club}){
  return <div className={'rtg-pitch '+(compact?'compact':'')}><div className="rtg-pitch-markings"><div className="rtg-midline"/><div className="rtg-circle"/><div className="rtg-box rtg-box-top"/><div className="rtg-box rtg-box-bottom"/></div>
   <div className="rtg-pitch-header">{compact?'STARTING XI':'THE STARTING ELEVEN'} <span>4 · 3 · 3</span></div>
@@ -53,53 +55,45 @@ function Landing({legacy,onStart,onImport}){
   </div>
  </div>;
 }
-function Dashboard({c,go,act}){
+function Dashboard({c,go}){
  const f=nextFixture(c),club=CLUBS.find(x=>x.id===c.id),p=profile(c),position=standings(c).findIndex(x=>x.id==='you')+1;
  const next=c.report?'result':c.checkpoint?'checkpoint':c.seasonComplete?'season':c.match?'match':null;
- const prepared=[
-  {done:c.scouted||c.signed||c.windowPassed,title:'Read the scouting report',detail:c.scouted?'Prospect ceiling revealed.':c.signed?'Transfer business settled.':c.windowPassed?'Market window passed.':'One free full scouting report this chapter.',cta:'SCOUT',target:'market'},
-  {done:c.signed||c.windowPassed,title:'Decide on a signing',detail:c.signed?(c.lastSigning?.name||'New signing')+' is in the squad.':c.windowPassed?'Cash banked for a future window.':'One deal available. Or keep your cash.',cta:'TRANSFERS',target:'market'},
-  {done:c.tacticChosen,title:'Choose your match plan',detail:c.tacticChosen?TACTICS[c.tactic].label+' selected.':'Balanced, High Press, or Counter.',cta:'SET TACTICS',target:'prematch'}
+ const youth=growthWatch(c)[0],offer=(c.saleOffers||[]).find(o=>!c.sold),offerPlayer=c.roster.find(x=>x.id===offer?.id);
+ const ready=[
+  {done:c.scouted||c.signed||c.windowPassed,title:'Scouting & transfers',detail:c.signed?'New signing: '+c.lastSigning?.name:c.windowPassed?'Transfer budget saved.':'Five players on the shortlist. Who improves us?',target:'market',button:'TRANSFERS'},
+  {done:c.sold,title:'An offer for your players',detail:c.sold?'Transfer out completed.':offerPlayer?offer.buyer+' want '+offerPlayer.name+' for '+formatCash(offer.fee):'No bids this chapter.',target:'squad',button:'VIEW BID'},
+  {done:true,title:'Study the next opponent',detail:f?f.opp.name+' · '+(f.opp.trait||'').toLowerCase()+'. Your '+TACTICS[c.tactic].label+' style is ready.':'Season complete.',target:'prematch',button:'SCOUT RIVAL'}
  ];
- const complete=prepared.filter(a=>a.done).length;
  return <div className="rtg-flow">
+  <DivisionBanner c={c}/>
   <div className="rtg-hero">
-   <div className="rtg-hero-copy"><span className="rtg-eyebrow">SEASON {c.season} / CHAPTER {Math.min(6,Math.floor(c.round/3)+1)} <span className="rtg-bullet">●</span> {DIVISIONS[c.tier]}</span>
+   <div className="rtg-hero-copy"><span className="rtg-eyebrow">SEASON {c.season} · MATCHWEEK {Math.min(18,c.round+1)} / 18</span>
     <h1>{c.round===0?'The season begins.':c.momentum>=65?'The town believes.':c.momentum<36?'Time to fight back.':'The next match awaits.'}<br/><em>{c.club}.</em></h1>
-    <p>{c.memories[0]||'Your first match is coming. The transfer window is open and the fans are watching.'}</p>
-    <div className="rtg-hero-actions">
-     <button className="rtg-button primary" onClick={()=>go(next||'prematch')}>{next?'CONTINUE YOUR SEASON':'GO TO MATCHDAY'} <span>→</span></button>
-     {!next&&<button className="rtg-button secondary" onClick={()=>go('market')}>TRANSFER WINDOW</button>}
-    </div>
+    <p>{c.memories[0]||'The away supporters are travelling. The transfer market is open. Time to make your mark.'}</p>
+    <div className="rtg-hero-actions"><button className="rtg-button primary" onClick={()=>go(next||'prematch')}>{next?'CONTINUE':'MATCHDAY PREVIEW'} <span>→</span></button>
+    {!next&&<button className="rtg-button secondary" onClick={()=>go('market')}>TRANSFERS</button>}</div>
    </div>
-   <div className="rtg-hero-art"><span className="rtg-huge-crest">{club.crest}</span><span className="rtg-hero-ribbon">THE ROAD TO GLORY</span></div>
+   <div className="rtg-hero-art"><span className="rtg-huge-crest">{club.crest}</span><span className="rtg-hero-ribbon">{DIVISION_CONFIG[c.tier].subtitle}</span></div>
   </div>
   <div className="rtg-metrics rtg-metrics-six">
-   <DotStat label="LEAGUE POSITION" value={ordinal(position)}/>
-   <DotStat label="TEAM RATING" value={p.overall+' OVR'}/>
-   <DotStat label="TRANSFER FUNDS" value={formatCash(c.budget)}/>
-   <DotStat label="SUPPORTERS" value={c.supporters.toLocaleString('en-GB')}/>
-   <DotStat label="CLUB FORM" value={c.momentum+'/100'}/>
-   <DotStat label="REPUTATION" value={c.reputation+'/100'}/>
+   <DotStat label="LEAGUE POSITION" value={ordinal(position)}/><DotStat label="TEAM RATING" value={p.overall+' OVR'}/><DotStat label="TRANSFER FUNDS" value={formatCash(c.budget)}/>
+   <DotStat label="SUPPORTERS" value={c.supporters.toLocaleString('en-GB')}/><DotStat label="CLUB FORM" value={c.momentum+'/100'}/><DotStat label="REPUTATION" value={c.reputation+'/100'}/>
   </div>
   <div className="rtg-dashboard-grid rtg-matchday-grid">
-   <section className="rtg-panel fixture">
-    <div className="rtg-panel-top"><span className="rtg-eyebrow">{f?'NEXT MATCH · ROUND '+f.round:'SEASON COMPLETE'}</span><Pill>{f?.home?'HOME MATCH':'AWAY MATCH'}</Pill></div>
-    {f?<><div className="rtg-fixture"><div><Badge club={club}/><strong>{c.club}</strong><small>RATING {p.overall}</small></div><span className="rtg-vs">VS</span><div><span className="rtg-rivalbadge">⚑</span><strong>{f.opp.name}</strong><small>RATING {Math.round(f.opp.strength)}</small></div></div>
-     <div className="rtg-fixture-bottom"><span>{p.overall>f.opp.strength+5?'You go in as favourites.':p.overall<f.opp.strength-5?'The visitors will be tough to beat.':'Expect a closely fought match.'}</span><button className="rtg-textbutton" onClick={()=>go(next||'prematch')}>MATCHDAY →</button></div></>:<p className="rtg-empty">Season complete. Your final table is ready.</p>}
+   <section className="rtg-panel fixture"><div className="rtg-panel-top"><span className="rtg-eyebrow">{f?'NEXT UP · ROUND '+f.round:'SEASON COMPLETE'}</span><Pill>{f?.home?'AT HOME':'ON THE ROAD'}</Pill></div>
+    {f?<><div className="rtg-fixture"><div><Badge club={club}/><strong>{c.club}</strong><small>OVR {p.overall}</small></div><span className="rtg-vs">VS</span><div><RivalBadge rival={f.opp}/><strong>{f.opp.name}</strong><small>{f.opp.nickname||'THE OPPOSITION'}</small></div></div>
+      <div className="rtg-rival-brief"><span>{f.opp.style?.toUpperCase()||'BALANCED'} FOOTBALL</span><strong>{f.opp.trait||'Disciplined opponents'}</strong><small>{f.home?'Your home crowd will be behind you.':'Away at '+(f.opp.venue||'The Ground')+'.'}</small></div>
+      <div className="rtg-fixture-bottom"><span>{tacticalMatchup(c.tactic,f.opp.style).label}</span><button className="rtg-textbutton" onClick={()=>go(next||'prematch')}>PREPARE →</button></div></>:<p className="rtg-empty">All fixtures complete. See where you finished.</p>}
    </section>
-   <section className="rtg-panel rtg-prep-panel">
-    <div className="rtg-panel-top"><span className="rtg-eyebrow">MANAGER'S MATCHDAY NOTES</span><Pill tone={complete>=2?'win':''}>{complete}/3 READY</Pill></div>
-    <h3>Before the whistle</h3>
-    <div className="rtg-prep-list">{prepared.map((a,i)=><button type="button" key={i} className={'rtg-prep-item '+(a.done?'done':'')} onClick={()=>go(a.target)} disabled={!!next}>
-      <span className="rtg-prep-check">{a.done?'✓':i+1}</span><span className="rtg-prep-copy"><strong>{a.title}</strong><small>{a.detail}</small></span><span className="rtg-prep-arrow">{a.done?'DONE':a.cta+' ↗'}</span>
-     </button>)}</div>
-    <div className="rtg-prep-footer"><small>These are optional. You can always go straight to kickoff.</small><button type="button" className="rtg-button primary" onClick={()=>go(next||'prematch')}> {next?'CONTINUE':'PLAY NEXT MATCH'} →</button></div>
+   <section className="rtg-panel rtg-prep-panel"><div className="rtg-panel-top"><span className="rtg-eyebrow">MANAGER'S DESK</span><Pill>BEFORE KICKOFF</Pill></div><h3>Your three talking points</h3>
+     <div className="rtg-prep-list">{ready.map((item,i)=><button key={i} type="button" disabled={!!next||i===2&&!f} className={'rtg-prep-item '+(item.done?'done':'')} onClick={()=>go(item.target)}>
+      <span className="rtg-prep-check">{item.done?'✓':i+1}</span><span className="rtg-prep-copy"><strong>{item.title}</strong><small>{item.detail}</small></span><span className="rtg-prep-arrow">{item.button} ↗</span></button>)}</div>
+     <div className="rtg-prep-footer"><small>All optional. The team is ready whenever you are.</small><button className="rtg-button primary" onClick={()=>go(next||'prematch')}>{next?'CONTINUE':'GO TO MATCHDAY'} →</button></div>
    </section>
   </div>
   <div className="rtg-bottom-grid">
-   <button type="button" className="rtg-featurelink" onClick={()=>go('market')}><span>↗ TRANSFER WINDOW</span><h3>Who joins<br/>the XI?</h3><small>{c.signed?'New signing: '+c.lastSigning?.name:c.windowPassed?'Funds reserved for next chapter.':'Five players on the shortlist.'}</small><b>OPEN TRANSFER OFFICE →</b></button>
-   <button type="button" className="rtg-featurelink academy" onClick={()=>go('squad')}><span>✦ THE DRESSING ROOM</span><h3>Meet your<br/>match winners.</h3><small>{c.roster.slice().sort((a,b)=>b.stats.goals-a.stats.goals)[0]?.name} leads the goals chart.</small><b>VIEW FIRST TEAM →</b></button>
+   <button type="button" className="rtg-featurelink" onClick={()=>go('market')}><span>↗ SCOUTING OFFICE</span><h3>The next<br/>difference maker.</h3><small>{c.signed?'Signed: '+c.lastSigning?.name:c.windowPassed?'Budget saved for the next window.':'Five players. One signing.'}</small><b>OPEN SHORTLIST →</b></button>
+   <button type="button" className="rtg-featurelink academy" onClick={()=>go('squad')}><span>✦ THE ACADEMY</span><h3>{youth?'Watch '+youth.name.split(' ').slice(-1)[0]+'.':'The next generation.'}</h3><small>{youth?youth.age+' years old · '+youth.ovr+' OVR · +'+(youth.growth||0)+' grown on the bench.':'Youngsters train automatically while they wait.'}</small><b>VIEW SQUAD →</b></button>
   </div>
  </div>;
 }
