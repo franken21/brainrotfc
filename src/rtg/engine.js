@@ -1,0 +1,301 @@
+// Road to Glory: Pocket Edition — browser-first, seeded single-player simulation.
+// The v12 Python project is design inspiration; this is an independent arcade ruleset.
+export const SAVE_KEY = 'rtg-pocket-v1';
+export const VERSION = 1;
+export const DIVISIONS = ['Coastal Division', 'National Division', 'Premier Division'];
+export const ROLES = ['GK','LB','CB','CB','RB','CM','CM','CAM','LW','ST','RW'];
+export const CLUBS = [
+  {id:'northstar',name:'Northstar Rovers',city:'Northstar',crest:'✦',colors:['#dcfb72','#173c36'],budget:215000,base:52,bonus:{LW:5,ST:3},weak:'A shaky back line. Explosive wide players.',tag:'THE DREAMERS'},
+  {id:'ironvale',name:'Ironvale Athletic',city:'Ironvale',crest:'◆',colors:['#ffb583','#66372d'],budget:185000,base:54,bonus:{CB:5,GK:4,ST:-7},weak:'Defensive grit. Desperate for goals.',tag:'THE UNDERDOGS'},
+  {id:'seabrook',name:'Seabrook City',city:'Seabrook',crest:'≈',colors:['#9be8ff','#174c69'],budget:195000,base:53,bonus:{CM:3,CAM:4,GK:-5},weak:'Clever midfield. Young and unpredictable.',tag:'THE WILDCARDS'}
+];
+const RIVAL_NAMES = ['Westhaven Rovers','Redcliff United','Oldbridge Town','Kingsport FC','Ashfield Athletic','Riverton City','Eastwick Albion','Millgate FC','Dunmere Wanderers'];
+const FIRST=['Leo','Milo','Ezra','Noah','Kai','Tariq','Oscar','Enzo','Arlo','Nico','Felix','Hugo','Luca','Ibrahim','Theo','Anton','Rafael','Idris','Jude','Mason','Elias','Alex','Mateo','Finn','Ruben','Ollie','Sami','Ben','Andre','Jasper'];
+const LAST=['Varela','Hartmann','Nilsen','Santos','Morales','Reed','Almeida','Fischer','Berg','Okoro','Haddad','Silva','Bennett','Hughes','Costa','Marquez','Svensson','Khan','Cole','Adebayo','Moretti','Kovacs','Dahl','Romero','Torres','Solberg','Wright','Bishop','Fowler','Lind'];
+const CANDIDATE_ROLES=['ST','CB','CAM','GK','RW','CM','LB','LW','RB'];
+const TACTICS={
+  balanced:{label:'Balanced',note:'Reliable in both boxes',attack:0,defence:0},
+  press:{label:'High Press',note:'Create more chances; expose your defence',attack:8,defence:-6},
+  counter:{label:'Counter',note:'Defend deep and break quickly',attack:2,defence:5}
+};
+export {TACTICS};
+
+function rand(c){c.seed=(Math.imul(c.seed,1664525)+1013904223)>>>0;return c.seed/4294967296;}
+function int(c,min,max){return min+Math.floor(rand(c)*(max-min+1));}
+function sample(c,a){return a[int(c,0,a.length-1)];}
+function clamp(x,min,max){return Math.max(min,Math.min(max,x));}
+function clone(v){return JSON.parse(JSON.stringify(v));}
+function newId(c,prefix){c.serial++;return prefix+'-'+c.serial;}
+function name(c){return sample(c,FIRST)+' '+sample(c,LAST);}
+function player(c,role,ovr,age,potential,origin='club'){
+ return {id:newId(c,'p'),name:name(c),role,ovr:clamp(ovr,36,98),potential:clamp(potential,ovr,99),age,origin,form:0,xp:0,stats:{apps:0,goals:0,assists:0},growth:0};
+}
+function fixtureList(){
+ const ids=['you',...RIVAL_NAMES.map((_,i)=>'r'+i)];
+ let ring=ids.slice(),out=[];
+ for(let round=0;round<9;round++){
+  const pairs=[];
+  for(let k=0;k<5;k++){
+   const a=ring[k],b=ring[9-k];
+   pairs.push(round%2===0?[a,b]:[b,a]);
+  }
+  out.push(pairs);
+  ring=[ring[0],ring[9],...ring.slice(1,9)];
+ }
+ return [...out,...out.map(pairs=>pairs.map(([h,a])=>[a,h]))];
+}
+export const FIXTURES=fixtureList();
+function startTable(rivals){
+ return [{id:'you',name:'Your club',p:0,w:0,d:0,l:0,gf:0,ga:0,pts:0},...rivals.map(r=>({id:r.id,name:r.name,p:0,w:0,d:0,l:0,gf:0,ga:0,pts:0}))];
+}
+function rivalsFor(c){
+ return RIVAL_NAMES.map((name,i)=>({id:'r'+i,name,strength:clamp((c.tier===0?52:c.tier===1?65:78)+i*1.2+int(c,-5,5),45,93)}));
+}
+function generateMarket(c){
+ const chapter=Math.floor(c.round/3),base=c.tier===0?58:c.tier===1?70:83;
+ // Five distinct, role-specific decisions with genuinely different trade-offs.
+ const roles=chapter===0?['ST','CB','CAM','GK','CM']:CANDIDATE_ROLES.slice();
+ if(chapter!==0){
+  for(let i=roles.length-1;i>0;i--){let j=int(c,0,i);[roles[i],roles[j]]=[roles[j],roles[i]];}
+ }
+ c.market=roles.slice(0,5).map((role,i)=>{
+  const mode=i%5;
+  const rating=clamp(base+[-3,7,2,5,0][mode]+int(c,-3,3),47,94);
+  const age=[18,28,23,25,20][mode]+int(c,-1,2);
+  const potential=clamp(rating+[18,3,11,6,16][mode]+int(c,-2,4),rating,98);
+  const fee=Math.round(([52,132,84,103,66][mode]*(c.tier===0?1:c.tier===1?12:95)+int(c,-8,8)*(c.tier===0?1:c.tier===1?9:65))*1000/1000)*1000;
+  const p=player(c,role,rating,age,potential,'market');
+  return {...p,fee:Math.max(24000,fee),type:['High-upside kid','Instant upgrade','Creative gamble','Proven starter','Future star'][mode]};
+ });
+ c.signed=false;c.scouted=false;c.scoutedId=null;
+}
+function buildSeason(c){
+ c.rivals=rivalsFor(c);c.table=startTable(c.rivals);
+ c.fixtures=FIXTURES;c.round=0;c.match=null;c.report=null;c.checkpoint=false;c.seasonComplete=false;
+ c.seasonResults=[];c.tactic='balanced';c.seasonGoals=0;
+ generateMarket(c);
+}
+export function freshState(){return {version:VERSION,legacy:{runs:[],legends:[],points:0},career:null};}
+export function startCareer(input,clubId,seed=Date.now()){
+ const s=clone(input&&input.version===VERSION?input:freshState());
+ const club=CLUBS.find(x=>x.id===clubId);if(!club)throw Error('Choose a valid club');
+ const c={id:club.id,club:club.name,crest:club.crest,colors:club.colors,season:1,tier:0,
+  budget:club.budget,seed:(seed>>>0)||1,serial:0,roster:[],round:0,careerResults:[],memories:[],
+  run:(s.legacy.runs.length+1)};
+ c.roster=ROLES.map((role,i)=>{
+  const ovr=clamp(club.base+int(c,-7,6)+(club.bonus[role]||0),42,69);
+  return player(c,role,ovr,int(c,20,29),ovr+int(c,4,13));
+ });
+ ['GK','CB','CM','ST'].forEach(role=>{const ovr=club.base+int(c,-11,-4);c.roster.push(player(c,role,ovr,int(c,18,29),ovr+int(c,6,16)));});
+ c.roster.forEach(p=>{if(p.age<=21)p.potential=clamp(p.potential+9,p.ovr,90);});
+ buildSeason(c);s.career=c;return s;
+}
+export function lineup(c){
+ const available=c.roster.slice();
+ return ROLES.map(role=>{
+  const exact=available.filter(p=>p.role===role).sort((a,b)=>b.ovr-a.ovr)[0];
+  const chosen=exact||available.sort((a,b)=>b.ovr-a.ovr)[0];
+  if(chosen)available.splice(available.indexOf(chosen),1);
+  return chosen;
+ });
+}
+export function starter(c,p){return lineup(c).some(x=>x?.id===p.id);}
+export function teamRating(c){return Math.round(lineup(c).reduce((sum,p)=>sum+(p?.ovr||45),0)/11);}
+export function profile(c){
+ const eleven=lineup(c),at=(role)=>eleven.filter(p=>p?.role===role);
+ const avg=arr=>arr.length?arr.reduce((sum,p)=>sum+p.ovr,0)/arr.length:50;
+ const attack=avg([...at('ST'),...at('ST'),...at('LW'),...at('RW'),...at('CAM')]);
+ const defence=avg([...at('GK'),...at('CB'),...at('CB'),...at('LB'),...at('RB')]);
+ const mid=avg([...at('CM'),...at('CAM')]);
+ return {attack:Math.round(attack*.8+mid*.2),defence:Math.round(defence*.87+mid*.13),overall:teamRating(c)};
+}
+export function nextFixture(c){
+ if(!c||c.round>=18)return null;
+ const pair=c.fixtures[c.round].find(([home,away])=>home==='you'||away==='you');
+ const home=pair[0]==='you',opp=c.rivals.find(r=>r.id===(home?pair[1]:pair[0]));
+ return {round:c.round+1,home,opp};
+}
+function applyScore(table,home,away,hg,ag){
+ const h=table.find(t=>t.id===home),a=table.find(t=>t.id===away);
+ [h,a].forEach(t=>t.p++);
+ h.gf+=hg;h.ga+=ag;a.gf+=ag;a.ga+=hg;
+ if(hg>ag){h.w++;h.pts+=3;a.l++;}
+ else if(ag>hg){a.w++;a.pts+=3;h.l++;}
+ else{h.d++;a.d++;h.pts++;a.pts++;}
+}
+export function standings(c){return [...c.table].sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf);}
+export function signPlayer(input,id){
+ const s=clone(input),c=s.career;
+ if(!c||c.match||c.report||c.checkpoint||c.seasonComplete||c.signed) return s;
+ const p=c.market.find(p=>p.id===id);
+ if(!p||p.fee>c.budget)return s;
+ const before=lineup(c).find(x=>x.role===p.role&&x.ovr===Math.min(...lineup(c).filter(x=>x.role===p.role).map(x=>x.ovr)));
+ c.roster.push({...p,origin:'transfer'});c.budget-=p.fee;c.signed=true;
+ c.memories.unshift('Signed '+p.name+' ('+p.role+', '+p.ovr+' OVR) for '+formatCash(p.fee)+'.'+(before&&p.ovr>before.ovr?' Replaces '+before.name+' in your XI.':''));
+ return s;
+}
+export function scoutPlayer(input,id){
+ const s=clone(input),c=s.career;
+ if(!c||c.scouted||c.match||c.report||c.checkpoint)return s;
+ if(!c.market.some(p=>p.id===id))return s;
+ c.scouted=true;c.scoutedId=id;return s;
+}
+export function chooseTactic(input,tactic){
+ const s=clone(input),c=s.career;
+ if(c&&!c.match&&!c.report&&!c.checkpoint&&TACTICS[tactic])c.tactic=tactic;
+ return s;
+}
+function scorer(c){
+ const players=lineup(c).filter(p=>['ST','LW','RW','CAM','CM'].includes(p.role));
+ const weights=players.map(p=>(p.role==='ST'?5:p.role==='LW'||p.role==='RW'?3:p.role==='CAM'?2:1)*(p.ovr/65));
+ const sum=weights.reduce((a,b)=>a+b,0);let x=rand(c)*sum;
+ for(let i=0;i<players.length;i++){x-=weights[i];if(x<=0)return players[i];}
+ return players[0];
+}
+function half(c,match,second,choice='hold'){
+ const p=profile(c),t=TACTICS[c.tactic],opp=match.fixture.opp;
+ const choiceAttack=choice==='push'?10:choice==='protect'?-5:0;
+ const choiceDef=choice==='protect'?9:choice==='push'?-9:0;
+ const atk=p.attack+t.attack+choiceAttack,def=p.defence+t.defence+choiceDef;
+ let events=[];
+ for(let i=0;i<4;i++){
+  const minute=(second?46:1)+i*11+int(c,2,10);
+  const yours=rand(c)<.52+(atk-opp.strength)*.007;
+  const chance=yours?clamp(.37+(atk-opp.strength)*.017+(match.fixture.home?.045:0),.09,.85)
+    :clamp(.37+(opp.strength-def)*.016-(match.fixture.home?.035:0),.09,.83);
+  const goal=rand(c)<chance;
+  const who=yours?'you':opp.id;
+  if(goal){
+   const guy=yours?scorer(c):null;
+   events.push({minute,side:who,goal:true,scorer:guy?.id||null,name:guy?.name||sample(c,['A sharp counter','A corner kick','A loose ball','A thunderbolt'])});
+  }else{
+   events.push({minute,side:who,goal:false,name:yours?sample(c,['Chance goes begging','Shot flies just wide','Keeper makes the save']):sample(c,['A brave block','Your keeper saves','A shot misses the target'])});
+  }
+ }
+ events.sort((a,b)=>a.minute-b.minute);return events;
+}
+export function kickoff(input){
+ const s=clone(input),c=s.career;
+ if(!c||c.match||c.report||c.checkpoint||c.seasonComplete)return s;
+ const fixture=nextFixture(c);
+ if(!fixture)return s;
+ const match={fixture,tactic:c.tactic,first:[],second:[],phase:'half',choice:null};
+ match.first=half(c,match,false);c.match=match;return s;
+}
+function opponentScore(c,home,away){
+ const h=c.rivals.find(r=>r.id===home),a=c.rivals.find(r=>r.id===away);
+ const diff=(h.strength-a.strength)*.025;
+ const hGoals=int(c,0,2)+(rand(c)<clamp(.42+diff,.08,.84)?1:0);
+ const aGoals=int(c,0,2)+(rand(c)<clamp(.28-diff,.08,.75)?1:0);
+ return [hGoals,aGoals];
+}
+function growAfterMatch(c){
+ const xi=lineup(c);const changes=[];
+ xi.forEach(p=>{
+  p.stats.apps++;p.xp++;
+  if(p.age<=27&&p.xp>=3&&p.ovr<p.potential&&rand(c)<(p.age<=21?.48:.21)){
+   p.ovr++;p.growth++;changes.push(p.name+' +1');p.xp=0;
+  }else if(p.xp>=4)p.xp=2;
+ });
+ return changes.slice(0,3);
+}
+export function finishMatch(input,choice='hold'){
+ const s=clone(input),c=s.career;
+ if(!c||!c.match||c.match.phase!=='half'||!['hold','push','protect'].includes(choice))return s;
+ const m=c.match;m.choice=choice;m.second=half(c,m,true,choice);
+ const events=[...m.first,...m.second],ours=events.filter(x=>x.goal&&x.side==='you').length,theirs=events.filter(x=>x.goal&&x.side!=='you').length;
+ const pair=c.fixtures[c.round].find(([h,a])=>h==='you'||a==='you');
+ applyScore(c.table,pair[0],pair[1],m.fixture.home?ours:theirs,m.fixture.home?theirs:ours);
+ c.fixtures[c.round].filter(([h,a])=>h!=='you'&&a!=='you').forEach(([h,a])=>{
+  const [hg,ag]=opponentScore(c,h,a);applyScore(c.table,h,a,hg,ag);
+ });
+ events.filter(x=>x.goal&&x.scorer).forEach(e=>{
+  const p=c.roster.find(x=>x.id===e.scorer);if(p)p.stats.goals++;
+ });
+ const growth=growAfterMatch(c);
+ const earned=ours>theirs?34000:ours===theirs?18000:9000;c.budget+=earned;
+ const report={fixture:m.fixture,events,ours,theirs,earned,growth,choice,
+  result:ours>theirs?'WIN':ours===theirs?'DRAW':'LOSS',tablePosition:0};
+ c.seasonGoals+=ours;c.round++;
+ report.tablePosition=standings(c).findIndex(x=>x.id==='you')+1;
+ c.seasonResults.push({round:c.round,opponent:m.fixture.opp.name,home:m.fixture.home,ours,theirs,result:report.result});
+ c.report=report;c.match=null;
+ if(c.round===18){c.seasonComplete=true;}
+ else if(c.round%3===0)c.checkpoint=true;
+ return s;
+}
+export function quickSim(input){
+ const pre=kickoff(input);if(!pre.career?.match)return pre;
+ return finishMatch(pre,'hold');
+}
+export function dismissReport(input){const s=clone(input);if(s.career)s.career.report=null;return s;}
+export function chapterChoice(input,choice){
+ const s=clone(input),c=s.career;
+ if(!c||!c.checkpoint||c.report||!['attack','defence','academy'].includes(choice))return s;
+ let result='';
+ if(choice==='academy'){
+  const role=sample(c,['ST','CAM','CB','GK','LW']);
+  const rating=clamp(teamRating(c)+int(c,-6,3),45,88);
+  const youth=player(c,role,rating,int(c,16,18),clamp(rating+int(c,16,23),rating,96),'academy');
+  c.roster.push(youth);result='Academy surprise: '+youth.name+' ('+role+', '+rating+' OVR) joins with '+youth.potential+' potential.';
+ }else{
+  const roles=choice==='attack'?['ST','LW','RW','CAM']:['GK','CB','LB','RB'];
+  const eligible=c.roster.filter(p=>roles.includes(p.role)).sort((a,b)=>b.ovr-a.ovr).slice(0,3);
+  const target=eligible[0],secondary=eligible[1];
+  const amount=target?Math.min(target.potential-target.ovr,5):0;
+  if(target){target.ovr+=amount;target.growth+=amount;}
+  let amount2=0;
+  if(secondary){amount2=Math.min(secondary.potential-secondary.ovr,3);secondary.ovr+=amount2;secondary.growth+=amount2;}
+  result=choice==='attack'?'Attacking masterclass: ':'Defensive overhaul: ';
+  result+=(target?.name||'Nobody')+' +'+amount+(secondary?', '+secondary.name+' +'+amount2:'')+' OVR.';
+ }
+ c.memories.unshift(result);c.checkpoint=false;generateMarket(c);return s;
+}
+export function seasonSummary(c){
+ const pos=standings(c).findIndex(x=>x.id==='you')+1;
+ const promoted=pos<=2&&c.tier<2;
+ const relegated=pos>=9&&c.tier>0;
+ return {position:pos,promoted,relegated,points:c.table.find(t=>t.id==='you').pts,division:DIVISIONS[c.tier]};
+}
+export function advanceSeason(input){
+ const s=clone(input),c=s.career;
+ if(!c||!c.seasonComplete||c.report||c.season>=5)return s;
+ const summary=seasonSummary(c);
+ c.careerResults.push({season:c.season,...summary});
+ if(summary.promoted)c.tier++;
+ else if(summary.relegated)c.tier--;
+ c.season++;c.budget+=c.tier===0?180000:c.tier===1?1350000:9000000;
+ c.roster.forEach(p=>{p.age++;p.form=0;});
+ c.memories.unshift('Season '+(c.season-1)+' finished '+ordinal(summary.position)+'. '+(summary.promoted?'PROMOTED!':summary.relegated?'Relegated.':'Another chapter begins.'));
+ buildSeason(c);return s;
+}
+export function archiveCareer(input){
+ const s=clone(input),c=s.career;
+ if(!c||!c.seasonComplete||c.report||c.season!==5)return s;
+ const summary=seasonSummary(c);
+ const results=[...c.careerResults,{season:c.season,...summary}];
+ const top=[...c.roster].sort((a,b)=>b.ovr-a.ovr).slice(0,3);
+ s.legacy.runs.unshift({id:c.run,club:c.club,finalDivision:DIVISIONS[c.tier],bestFinish:Math.min(...results.map(r=>r.position)),results,
+   bestPlayer:top[0].name});
+ const byGoals=[...c.roster].sort((a,b)=>b.stats.goals-a.stats.goals);
+ [...top,byGoals[0]].filter(Boolean).forEach(p=>{
+  if(!s.legacy.legends.some(x=>x.id===c.run+'-'+p.id)){
+   s.legacy.legends.push({id:c.run+'-'+p.id,name:p.name,role:p.role,ovr:p.ovr,goals:p.stats.goals,apps:p.stats.apps,club:c.club,run:c.run});
+  }
+ });
+ s.legacy.legends.sort((a,b)=>b.ovr-a.ovr||b.goals-a.goals);
+ s.legacy.points+=Math.max(2,10-summary.position)+(summary.promoted?3:0);
+ s.career=null;return s;
+}
+export function formatCash(amount){return '£'+(amount>=1000000?(amount/1000000).toFixed(2)+'m':Math.round(amount/1000)+'k');}
+export function ordinal(n){return n+(n%10===1&&n!==11?'st':n%10===2&&n!==12?'nd':n%10===3&&n!==13?'rd':'th');}
+export function validState(s){
+ if(!s||s.version!==VERSION||!s.legacy||!Array.isArray(s.legacy.runs))return false;
+ const c=s.career;if(!c)return true;
+ if(!CLUBS.some(x=>x.id===c.id)||c.round<0||c.round>18||c.roster.length<11||c.market.length!==5)return false;
+ if(c.budget<0||new Set(c.roster.map(p=>p.id)).size!==c.roster.length)return false;
+ if(c.table.length!==10||c.table.some(x=>x.p!==c.round))return false;
+ if(c.roster.some(p=>p.ovr>p.potential||p.ovr<0||p.potential>99))return false;
+ if(c.match&&c.report)return false;
+ return true;
+}
