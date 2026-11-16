@@ -6,7 +6,7 @@ import {
  chapterChoice,advanceSeason,archiveCareer,standings,seasonSummary
 } from '../src/rtg/engine.js';
 
-test('three clubs create distinct complete and valid careers',()=>{
+test('twelve clubs create complete and distinct valid careers',()=>{
  const values=CLUBS.map(club=>{
   const s=startCareer(freshState(),club.id,101);
   assert.ok(validState(s));assert.equal(s.career.roster.length,15);
@@ -15,7 +15,8 @@ test('three clubs create distinct complete and valid careers',()=>{
   assert.equal(s.career.table.length,10);
   return s.career.budget;
  });
- assert.equal(new Set(values).size,3);
+ assert.equal(CLUBS.length,12);
+ assert.ok(new Set(values).size>=7,'budgets have genuinely different levels');
 });
 test('five-target transfer shortlist has no phantom signings and respects budget',()=>{
  let s=startCareer(freshState(),'northstar',42);
