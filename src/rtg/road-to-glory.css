@@ -707,3 +707,38 @@
  .rtg-season-footer .rtg-button{width:100%}
  .rtg-seasoncompact>h1{font-size:52px}
 }
+
+/* The matchday decision and kickoff fit above the fold on laptop displays. */
+.rtg-prematch-heading-primary{position:relative;padding-right:220px}
+.rtg-top-kickoff{position:absolute;top:4px;right:0;min-width:200px}
+@media(min-width:900px){
+ .rtg-prematch{gap:11px}
+ .rtg-prematch .rtg-stage-banner.compact{padding:7px 13px}
+ .rtg-prematch .rtg-stage-banner.compact .rtg-stage-seal{height:33px;width:33px;font-size:20px}
+ .rtg-prematch .rtg-stage-banner.compact strong{font-size:19px}
+ .rtg-prematch-heading h1{font-size:clamp(39px,4vw,54px);margin:3px 0 6px}
+ .rtg-prematch-heading p{font-size:11px}
+ .rtg-prematch .rtg-matchday-bonuses{margin-top:7px}
+ .rtg-prematch .rtg-matchscore-before{padding:8px 12px;min-height:80px}
+ .rtg-prematch .rtg-matchscore-before .rtg-crest,.rtg-prematch .rtg-matchscore-before .rtg-rivalbadge{height:38px;width:36px;font-size:22px}
+ .rtg-prematch .rtg-matchscore-before strong{font-size:20px}
+ .rtg-prematch .rtg-matchscore-before>span{font-size:35px}
+ .rtg-prematch .rtg-opponent-scout{padding:12px;gap:12px}
+ .rtg-prematch .rtg-opponent-mark{font-size:43px}
+ .rtg-prematch .rtg-opponent-scout h2{font-size:24px;margin:3px 0}
+ .rtg-prematch .rtg-opponent-scout p{font-size:10px}
+ .rtg-prematch .rtg-scout-tip{padding:9px}
+ .rtg-prematch .rtg-prematch-plan{padding:12px 15px}
+ .rtg-prematch .rtg-prematch-plan .rtg-panel-top{margin-bottom:7px}
+ .rtg-prematch .rtg-prematch-plan>.rtg-subcopy{margin-bottom:9px;font-size:10px}
+ .rtg-prematch .rtg-plan-card{min-height:107px;padding:9px 12px;gap:4px}
+ .rtg-prematch .rtg-plan-card.selected{padding:8px 11px}
+ .rtg-prematch .rtg-plan-card strong{font-size:21px}
+ .rtg-prematch .rtg-plan-icon{font-size:24px}
+ .rtg-prematch .rtg-plan-card small{font-size:9px}
+ .rtg-prematch .rtg-ready-kickoff{padding:10px 15px}
+ .rtg-prematch .rtg-ready-kickoff strong{font-size:22px}
+ .rtg-prematch .rtg-ready-kickoff p{font-size:10px}
+ .rtg-prematch .rtg-kickoff-actions .rtg-button{min-height:41px;font-size:10px!important}
+}
+@media(max-width:650px){.rtg-prematch-heading-primary{padding-right:0;padding-top:42px}.rtg-top-kickoff{top:0;right:0;left:0;min-width:0;width:100%;padding:10px!important}}
