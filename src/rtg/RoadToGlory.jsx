@@ -1,18 +1,9 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
-import {CLUBS,DIVISIONS,ROLES,TACTICS,SAVE_KEY,VERSION,freshState,startCareer,lineup,profile,teamRating,nextFixture,standings,signPlayer,scoutPlayer,chooseTactic,kickoff,finishMatch,quickSim,dismissReport,chapterChoice,advanceSeason,archiveCareer,seasonSummary,formatCash,ordinal,validState,transferPreview,passMarket} from './engine.js';
+import {CLUBS,DIVISIONS,ROLES,TACTICS,SAVE_KEY,VERSION,freshState,startCareer,lineup,profile,teamRating,nextFixture,standings,signPlayer,scoutPlayer,chooseTactic,kickoff,finishMatch,quickSim,dismissReport,chapterChoice,advanceSeason,archiveCareer,seasonSummary,formatCash,ordinal,validState,transferPreview,passMarket,migrateState} from './engine.js';
 import './road-to-glory.css';
 
 function loadGame(){
- try{const raw=localStorage.getItem(SAVE_KEY);if(raw){const s=JSON.parse(raw);
-   if(s.version===VERSION&&s.career){
-    // Migrate prototype saves without wiping the manager's current career.
-    const c=s.career;
-    if(typeof c.supporters!=='number')c.supporters=900;
-    if(typeof c.momentum!=='number')c.momentum=50;
-    if(typeof c.reputation!=='number')c.reputation=10;
-    c.tacticChosen=!!c.tacticChosen;c.windowPassed=!!c.windowPassed;
-   }
-   if(validState(s))return s;}}
+ try{const raw=localStorage.getItem(SAVE_KEY);if(raw){const s=migrateState(JSON.parse(raw));if(validState(s))return s;}}
  catch(e){console.warn('Road to Glory save could not be loaded',e);}
  return freshState();
 }
@@ -169,7 +160,7 @@ function Almanac({game,onImport}){
  }
  async function importSave(e){
   const f=e.target.files?.[0];if(!f)return;
-  try{const parsed=JSON.parse(await f.text());if(!validState(parsed))throw Error('Invalid Road to Glory save');onImport(parsed);}
+  try{const parsed=migrateState(JSON.parse(await f.text()));if(!validState(parsed))throw Error('Invalid Road to Glory save');onImport(parsed);}
   catch(err){window.alert('Could not import save: '+err.message);}e.target.value='';
  }
  return <div className="rtg-flow"><SectionHead eyebrow="THE STORY YOU LEAVE BEHIND" title="The football almanac." right={<Pill tone="lime">{game.legacy.runs.length} COMPLETED RUNS</Pill>}/>
