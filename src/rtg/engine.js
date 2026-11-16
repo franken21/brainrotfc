@@ -175,11 +175,16 @@ function scorer(c){
  for(let i=0;i<players.length;i++){x-=weights[i];if(x<=0)return players[i];}
  return players[0];
 }
+export function clubBoost(c,home){
+ return {confidence:Math.round((c.momentum-50)/7),crowd:home?clamp(Math.round((c.supporters-750)/250),0,7):0};
+}
 function half(c,match,second,choice='hold'){
  const p=profile(c),t=TACTICS[c.tactic],opp=match.fixture.opp;
  const choiceAttack=choice==='push'?10:choice==='protect'?-5:0;
  const choiceDef=choice==='protect'?9:choice==='push'?-9:0;
- const atk=p.attack+t.attack+choiceAttack,def=p.defence+t.defence+choiceDef;
+ const boost=clubBoost(c,match.fixture.home);
+ const atk=p.attack+t.attack+choiceAttack+boost.confidence+boost.crowd;
+ const def=p.defence+t.defence+choiceDef+Math.round(boost.confidence/2)+Math.round(boost.crowd/2);
  let events=[];
  for(let i=0;i<4;i++){
   const minute=(second?46:1)+i*11+int(c,2,10);
@@ -236,7 +241,9 @@ export function finishMatch(input,choice='hold'){
   const p=c.roster.find(x=>x.id===e.scorer);if(p)p.stats.goals++;
  });
  const growth=growAfterMatch(c);
- const earned=ours>theirs?34000:ours===theirs?18000:9000;c.budget+=earned;
+ const baseIncome=ours>theirs?34000:ours===theirs?18000:9000;
+ const reputationBonus=Math.round(c.reputation/10)*3000;
+ const earned=baseIncome+reputationBonus;c.budget+=earned;
  const supportersBefore=c.supporters,momentumBefore=c.momentum,reputationBefore=c.reputation;
  const shock=m.fixture.opp.strength>teamRating(c)+5;
  const supportersChange=ours>theirs?(shock?280:180)+int(c,0,80):ours===theirs?40+int(c,0,30):-Math.min(c.supporters-200,45+int(c,0,45));
@@ -245,7 +252,7 @@ export function finishMatch(input,choice='hold'){
  c.reputation=clamp(c.reputation+(ours>theirs?(shock?5:3):ours===theirs?1:-1),0,100);
  const report={fixture:m.fixture,events,ours,theirs,earned,growth,choice,
   result:ours>theirs?'WIN':ours===theirs?'DRAW':'LOSS',tablePosition:0,
-  supportersBefore,supportersChange,supportersAfter:c.supporters,
+  supportersBefore,supportersChange,supportersAfter:c.supporters,reputationBonus,
   momentumBefore,momentumChange:c.momentum-momentumBefore,momentumAfter:c.momentum,
   reputationBefore,reputationChange:c.reputation-reputationBefore,reputationAfter:c.reputation,
   topScorer:(()=>{const scorers=events.filter(x=>x.goal&&x.side==='you');return scorers.length?scorers[0].name:null;})()};
