@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
  freshState,startCareer,CLUBS,ROLES,FIXTURES,validState,lineup,teamRating,
- signPlayer,scoutPlayer,chooseTactic,transferPreview,passMarket,migrateState,clubBoost,MAX_SQUAD, DIVISION_CONFIG, sellPlayer, growthWatch,tacticalMatchup,resolveOffseason,startingChoices,kickoff,finishMatch,quickSim,dismissReport,
+ signPlayer,scoutPlayer,chooseTactic,transferPreview,passMarket,migrateState,clubBoost,MAX_SQUAD, DIVISION_CONFIG, growthWatch,tacticalMatchup,resolveOffseason,startingChoices,kickoff,finishMatch,quickSim,dismissReport,
  chapterChoice,advanceSeason,archiveCareer,standings,seasonSummary
 } from '../src/rtg/engine.js';
 
