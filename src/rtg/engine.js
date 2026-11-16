@@ -324,6 +324,29 @@ export function archiveCareer(input){
 }
 export function formatCash(amount){return '£'+(amount>=1000000?(amount/1000000).toFixed(2)+'m':Math.round(amount/1000)+'k');}
 export function ordinal(n){return n+(n%10===1&&n!==11?'st':n%10===2&&n!==12?'nd':n%10===3&&n!==13?'rd':'th');}
+export function migrateState(s){
+ if(!s||s.version!==VERSION||!s.career)return s;
+ const c=s.career;
+ // First prototype had no fan/reputation/matchday checklist fields.
+ if(typeof c.supporters!=='number')c.supporters=c.id==='seabrook'?1100:c.id==='ironvale'?780:920;
+ if(typeof c.momentum!=='number')c.momentum=50;
+ if(typeof c.reputation!=='number')c.reputation=10;
+ c.tacticChosen=!!c.tacticChosen;
+ c.windowPassed=!!c.windowPassed;
+ if(c.signed&&!c.lastSigning){
+  const p=[...c.roster].reverse().find(p=>p.origin==='transfer');
+  if(p){
+   const without={...c,roster:c.roster.filter(x=>x.id!==p.id)};
+   const preview=transferPreview(without,p);
+   c.lastSigning={id:p.id,name:p.name,role:p.role,age:p.age,ovr:p.ovr,
+    potential:p.potential,fee:0,oldName:preview.oldName,oldRating:preview.oldRating,
+    upgrade:preview.upgrade,attack:preview.attack,defence:preview.defence,
+    overall:preview.overall,budget:c.budget,supportersChange:0,reputationChange:0};
+  }
+ }
+ return s;
+}
+
 export function validState(s){
  if(!s||s.version!==VERSION||!s.legacy||!Array.isArray(s.legacy.runs))return false;
  const c=s.career;if(!c)return true;
