@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
-import {CLUBS,DIVISIONS,ROLES,TACTICS,SAVE_KEY,VERSION,freshState,startCareer,lineup,profile,teamRating,nextFixture,standings,signPlayer,scoutPlayer,chooseTactic,kickoff,finishMatch,quickSim,dismissReport,chapterChoice,advanceSeason,archiveCareer,seasonSummary,formatCash,ordinal,validState,transferPreview,passMarket,migrateState} from './engine.js';
+import {CLUBS,DIVISIONS,ROLES,TACTICS,SAVE_KEY,VERSION,freshState,startCareer,lineup,profile,teamRating,nextFixture,standings,signPlayer,scoutPlayer,chooseTactic,kickoff,finishMatch,quickSim,dismissReport,chapterChoice,advanceSeason,archiveCareer,seasonSummary,formatCash,ordinal,validState,transferPreview,passMarket,migrateState,clubBoost} from './engine.js';
 import './road-to-glory.css';
 
 function loadGame(){
@@ -172,7 +172,7 @@ function Almanac({game,onImport}){
  </div>;
 }
 function Prematch({c,onStart,onTactic,onQuick,go}){
- const f=nextFixture(c),club=CLUBS.find(x=>x.id===c.id),stats=profile(c);
+ const f=nextFixture(c),club=CLUBS.find(x=>x.id===c.id),stats=profile(c),boost=clubBoost(c,f?.home);
  if(!f)return null;
  const styles=[
   {id:'balanced',icon:'◆',title:'Balanced',effect:'Even in attack and defence',foot:'Trust the players'},
@@ -180,7 +180,7 @@ function Prematch({c,onStart,onTactic,onQuick,go}){
   {id:'counter',icon:'↯',title:'Counter',effect:'ATT +2 · DEF +5',foot:'Stay solid. Hit them on the break.'}
  ];
  return <div className="rtg-flow rtg-prematch">
-  <div className="rtg-prematch-heading"><span className="rtg-eyebrow">MATCHDAY {f.round} / 18 · {f.home?'HOME':'AWAY'} · SEASON {c.season}</span><h1>It's matchday.</h1><p>The team is in. The fans are arriving. Pick your approach, then blow the whistle.</p></div>
+  <div className="rtg-prematch-heading"><span className="rtg-eyebrow">MATCHDAY {f.round} / 18 · {f.home?'HOME':'AWAY'} · SEASON {c.season}</span><h1>It's matchday.</h1><p>The team is in. The fans are arriving. Pick your approach, then blow the whistle.</p><div className="rtg-matchday-bonuses"><span>◆ FORM {boost.confidence>=0?'+':''}{boost.confidence}</span><span>♬ HOME CROWD +{boost.crowd}</span><span>★ REPUTATION {c.reputation}</span></div></div>
   <div className="rtg-matchscore rtg-matchscore-before"><div><Badge club={club}/><strong>{c.club}</strong><small>ATT {stats.attack} / DEF {stats.defence}</small></div><span>VS</span><div><span className="rtg-rivalbadge">⚑</span><strong>{f.opp.name}</strong><small>TEAM {Math.round(f.opp.strength)}</small></div></div>
   <section className="rtg-panel rtg-prematch-plan"><div className="rtg-panel-top"><span className="rtg-eyebrow">01 / PICK A MATCH PLAN</span><Pill tone={c.tacticChosen?'win':''}>{c.tacticChosen?'PLAN SELECTED':'YOUR CALL'}</Pill></div>
     <div className="rtg-plan-cards">{styles.map(st=><button type="button" className={'rtg-plan-card '+(c.tactic===st.id?'selected':'')} key={st.id} onClick={()=>onTactic(st.id)}>
@@ -214,7 +214,7 @@ function Report({c,onContinue}){
  return <div className="rtg-flow rtg-reportview">
   <div className="rtg-result-header"><span className="rtg-eyebrow">FULL TIME · ROUND {r.fixture.round}</span><h1 className={r.result==='WIN'?'wintext':r.result==='LOSS'?'losstext':''}>{r.result==='WIN'?'THREE POINTS!':r.result==='LOSS'?'BACK TO WORK.':'A HARD-FOUGHT POINT.'}</h1></div>
   <div className="rtg-matchscore result"><div><Badge club={club}/><strong>{c.club}</strong></div><span>{r.ours} <small>–</small> {r.theirs}</span><div><span className="rtg-rivalbadge">⚑</span><strong>{r.fixture.opp.name}</strong></div></div>
-  <div className={'rtg-crowd-pulse '+(r.result==='WIN'?'celebrate':'')}><div className="rtg-crowd-icon">♬ <span>◉</span> ♬</div><div><span className="rtg-eyebrow">IN THE STANDS</span><h2>{crowd}</h2><p>{r.result==='WIN'?'Victory travels fast. More fans are turning up every week.':r.result==='DRAW'?'The supporters can see your team fighting.':'A tough afternoon. Turn it around next week.'}</p></div></div>
+  <div className={'rtg-crowd-pulse '+(r.result==='WIN'?'celebrate':'')}><div className="rtg-crowd-icon">♬ <span>◉</span> ♬</div><div><span className="rtg-eyebrow">IN THE STANDS</span><h2>{crowd}</h2><p>{r.result==='WIN'?'Victory travels fast. More fans are turning up every week. Strong form and a bigger home crowd will help you next match.':r.result==='DRAW'?'The supporters can see your team fighting.':'A tough afternoon. Turn it around next week.'}</p></div></div>
   <div className="rtg-result-stats rtg-match-rewards">
    <div><span>SUPPORTERS</span><strong>{c.supporters.toLocaleString('en-GB')}</strong><em className={supportersChange>=0?'rtg-positive':'rtg-negative'}>{supportersChange>=0?'+':''}{supportersChange} fans</em></div>
    <div><span>CLUB FORM</span><strong>{c.momentum}/100</strong><em className={formChange>=0?'rtg-positive':'rtg-negative'}>{formChange>=0?'+':''}{formChange} this match</em></div>
