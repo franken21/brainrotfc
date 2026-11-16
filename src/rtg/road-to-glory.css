@@ -372,3 +372,132 @@
 .rtg-landing-actions .rtg-button.secondary{min-width:215px}
 .rtg-landing-actions small{margin-left:auto;align-self:center}
 @media(max-width:650px){.rtg-landing-actions .rtg-button.secondary{min-width:0;width:100%}.rtg-landing-actions small{margin:0;align-self:center}}
+
+/* Road to Glory: The Three Football Worlds */
+.rtg-stage-banner{display:flex;align-items:center;gap:17px;border:1px solid var(--rtg-line);border-left:4px solid var(--rtg-lime);border-radius:7px;background:linear-gradient(110deg,rgba(255,255,255,.07),rgba(255,255,255,.015));padding:14px 19px;position:relative;overflow:hidden}
+.rtg-stage-seal{display:grid;place-items:center;flex-shrink:0;width:53px;height:53px;border-radius:50%;border:2px solid var(--rtg-lime);color:var(--rtg-lime);font:900 33px/1 'Barlow Condensed',sans-serif;background:rgba(0,0,0,.18)}
+.rtg-stage-banner>div:nth-child(2){flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.rtg-stage-banner>div:nth-child(2)>span{font-size:9px;font-weight:900;letter-spacing:.17em;color:var(--rtg-lime)}
+.rtg-stage-banner strong{font:900 30px/1 'Barlow Condensed',sans-serif;text-transform:uppercase}
+.rtg-stage-banner small{font-size:10px;color:var(--rtg-muted);line-height:1.5}
+.rtg-stage-meter{display:flex;gap:7px;align-items:center}
+.rtg-stage-meter span{display:grid;place-items:center;width:28px;height:28px;border:1px solid var(--rtg-line);border-radius:5px;color:#73847d;opacity:.55}
+.rtg-stage-meter span.lit{opacity:1;color:var(--rtg-lime);border-color:var(--rtg-lime);background:rgba(255,255,255,.08)}
+.rtg-stage-banner.compact{padding:10px 15px}
+.rtg-stage-banner.compact .rtg-stage-seal{width:40px;height:40px;font-size:25px}
+.rtg-stage-banner.compact strong{font-size:24px}
+.rtg-rivalbadge-painted{background:color-mix(in srgb,var(--rival-ink) 19%,#171b1d);border-color:var(--rival-ink);color:var(--rival-ink);font-size:31px}
+.rtg-league-rival-icon{display:inline-block;font:900 15px/1 'Barlow Condensed',sans-serif;margin-right:3px}
+.rtg-rival-brief{background:rgba(0,0,0,.15);border:1px solid var(--rtg-line);border-radius:5px;padding:12px 14px;display:flex;flex-direction:column;gap:5px}
+.rtg-rival-brief>span{color:var(--rtg-lime);font-size:9px;letter-spacing:.13em;font-weight:900}
+.rtg-rival-brief strong{font-size:12px}
+.rtg-rival-brief small{color:var(--rtg-muted);font-size:10px}
+/* Coastal: warm local grounds and lime terraces */
+.rtg-division-coastal{--rtg-bg:#0b1713;--rtg-panel:#142620;--rtg-line:#2f4b3c;--rtg-lime:#d9fc77;--rtg-cream:#f1f8e9;--rtg-muted:#adc0b0;background:radial-gradient(ellipse at 96% 4%,#254734 0,transparent 30%),var(--rtg-bg)}
+.rtg-division-coastal .rtg-stage-banner{background:linear-gradient(100deg,#2f5945a8,#16352f 60%,#12271e)}
+.rtg-division-coastal .rtg-hero{background:linear-gradient(105deg,#214a39,#254334)}
+.rtg-division-coastal .rtg-pitch{background:repeating-linear-gradient(180deg,#286943 0 76px,#215c3a 76px 152px)}
+.rtg-division-coastal .rtg-topbar{background:#0d2119}
+/* National: industrial stadiums, sodium floodlights, orange terraces */
+.rtg-division-national{--rtg-bg:#1a1514;--rtg-panel:#302523;--rtg-line:#6b4e43;--rtg-lime:#ffc082;--rtg-cream:#fff0de;--rtg-muted:#c8b0a4;background:radial-gradient(ellipse at 93% 3%,#73482f88 0,transparent 35%),#1a1514}
+.rtg-division-national .rtg-sidebar{background:#261b1b;border-right-color:#694838}
+.rtg-division-national .rtg-sideclub{background:#382822;padding:10px;border:1px solid #77543d;border-radius:7px}
+.rtg-division-national .rtg-topbar{background:#2b1c19}
+.rtg-division-national .rtg-hero{background:linear-gradient(118deg,#6d3e2d,#352223);border-color:#b27e57}
+.rtg-division-national .rtg-hero:before{background:repeating-linear-gradient(90deg,transparent 0 54px,#ffc78806 54px 59px),radial-gradient(circle at 83% 25%,#fbc7944d,transparent 34%)}
+.rtg-division-national .rtg-hero h1 em{color:#ffe9b2}
+.rtg-division-national .rtg-huge-crest{background:#f7b474;color:#493025;text-shadow:3px 4px #b57b50}
+.rtg-division-national .rtg-stage-banner{background:linear-gradient(100deg,#513626,#2a1d1b 73%)}
+.rtg-division-national .rtg-panel,.rtg-division-national .rtg-stat,.rtg-division-national .rtg-target{background:#342621;border-color:#654c40}
+.rtg-division-national .rtg-pitch{background:repeating-linear-gradient(180deg,#60503b 0 76px,#765c3b 76px 152px);border-color:#b28e53}
+.rtg-division-national .rtg-pitch-token{color:#35251a}
+.rtg-division-national .rtg-tacticbuttons,.rtg-division-national .rtg-market-intro,.rtg-division-national .rtg-rival-brief{background:#3b2c24}
+.rtg-division-national .rtg-prep-panel,.rtg-division-national .rtg-featurelink{background:#4a3024;border-color:#87604a}
+.rtg-division-national .rtg-featurelink.academy{background:#48352b}
+.rtg-division-national .rtg-prep-item,.rtg-division-national .rtg-plan-card,.rtg-division-national .rtg-sale-card{background:#443228;border-color:#936447}
+.rtg-division-national .rtg-plan-card.selected{background:#684632}
+.rtg-division-national .rtg-matchscore,.rtg-division-national .rtg-ready-kickoff{background:#583b2a;border-color:#cb9664}
+.rtg-division-national .rtg-legend-avatar{background:#764d34}
+.rtg-division-national .rtg-topbar-issue{color:#e1b997}
+.rtg-division-national .rtg-leaguetable th{background:#4e3329}
+.rtg-division-national .rtg-leaguetable tr.is-you{background:#684735}
+/* Premier: electric violet floodlights, gold spotlight, grandstands */
+.rtg-division-premier{--rtg-bg:#100f23;--rtg-panel:#201c3c;--rtg-line:#51467f;--rtg-lime:#e9bbff;--rtg-cream:#f5ecff;--rtg-muted:#b6add5;background:radial-gradient(ellipse at 90% -10%,#54297399 0,transparent 42%),#100f23}
+.rtg-division-premier .rtg-sidebar{background:#17132f;border-right-color:#51447a}
+.rtg-division-premier .rtg-topbar{background:#1d1539}
+.rtg-division-premier .rtg-sideclub{background:linear-gradient(110deg,#332352,#1d193c);padding:10px;border:1px solid #7158a1;border-radius:7px}
+.rtg-division-premier .rtg-hero{background:radial-gradient(ellipse at 82% 25%,#844cb47a,transparent 48%),linear-gradient(110deg,#393066,#21193c);border-color:#a16fc8}
+.rtg-division-premier .rtg-hero:before{background:repeating-linear-gradient(120deg,transparent 0 71px,#ffffff09 72px 74px)}
+.rtg-division-premier .rtg-hero h1 em{color:#ffdc8c}
+.rtg-division-premier .rtg-huge-crest{background:linear-gradient(145deg,#ffd891,#d3a2f6);color:#39244b}
+.rtg-division-premier .rtg-stage-banner{background:linear-gradient(110deg,#43326f,#1c1a3c)}
+.rtg-division-premier .rtg-panel,.rtg-division-premier .rtg-stat,.rtg-division-premier .rtg-target{background:#272242;border-color:#65528f}
+.rtg-division-premier .rtg-prep-panel,.rtg-division-premier .rtg-featurelink{background:#33274d;border-color:#8668ad}
+.rtg-division-premier .rtg-featurelink.academy{background:#38305c}
+.rtg-division-premier .rtg-prep-item,.rtg-division-premier .rtg-plan-card,.rtg-division-premier .rtg-sale-card{background:#332a58;border-color:#80649e}
+.rtg-division-premier .rtg-plan-card.selected{background:#543d76}
+.rtg-division-premier .rtg-pitch{background:repeating-linear-gradient(180deg,#275268 0 76px,#22455e 76px 152px);border-color:#c9a5ee}
+.rtg-division-premier .rtg-tacticbuttons,.rtg-division-premier .rtg-market-intro,.rtg-division-premier .rtg-rival-brief{background:#34294f}
+.rtg-division-premier .rtg-matchscore,.rtg-division-premier .rtg-ready-kickoff{background:#443368;border-color:#b090d4}
+.rtg-division-premier .rtg-topbar-issue{color:#cdb2f5}
+.rtg-division-premier .rtg-leaguetable th{background:#352953}
+.rtg-division-premier .rtg-leaguetable tr.is-you{background:#534071}
+.rtg-division-premier .rtg-legend-avatar{background:#5e4a81}
+.rtg-division-premier .rtg-rivalbadge-painted{background:#372648}
+.rtg-division-premier .rtg-leaguetable td{border-color:#4d4472}
+.rtg-division-premier .rtg-stat strong{color:#f5dcff}
+/* Make the youth loop and transfer inbox readable */
+.rtg-youth-desk{border-color:#66866a}
+.rtg-youth-desk h3{font-size:32px;margin-bottom:9px}
+.rtg-youth-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin-top:19px}
+.rtg-youth-card{border-radius:7px;padding:16px;border:1px solid var(--rtg-line);background:rgba(0,0,0,.17);display:flex;flex-direction:column;gap:11px;min-width:0}
+.rtg-youth-top{display:flex;justify-content:space-between;gap:9px;color:var(--rtg-lime);font-size:10px;letter-spacing:.08em;font-weight:900}
+.rtg-youth-card>strong{font:800 25px/1 'Barlow Condensed',sans-serif;text-transform:uppercase}
+.rtg-youth-card>small{color:var(--rtg-muted);font-size:10px}
+.rtg-youth-potential{display:flex;align-items:center;gap:7px;font-size:8px;color:var(--rtg-muted);font-weight:900;letter-spacing:.02em;white-space:nowrap}
+.rtg-youth-potential>div{flex:1;height:7px;border-radius:10px;background:#60716699;overflow:hidden;min-width:20px}
+.rtg-youth-potential i{display:block;height:100%;background:var(--rtg-lime);border-radius:10px}
+.rtg-offer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px}
+.rtg-sale-card{padding:20px;border-radius:7px;border:1px solid var(--rtg-line);background:rgba(0,0,0,.15);display:flex;align-items:flex-start;flex-direction:column;gap:10px;min-width:0}
+.rtg-sale-card.star-offer{border-color:#d3a35f;background:linear-gradient(130deg,#53402e57,transparent)}
+.rtg-sale-card h3{font-size:31px}
+.rtg-sale-card p{font-size:11px;color:var(--rtg-muted)}
+.rtg-sale-card small{color:var(--rtg-muted);font-size:11px;line-height:1.55}
+.rtg-sale-card .rtg-button{align-self:stretch;margin-top:auto}
+.rtg-bid-value{display:flex;align-items:center;justify-content:space-between;gap:9px;width:100%;border-top:1px solid var(--rtg-line);border-bottom:1px solid var(--rtg-line);padding:12px 0}
+.rtg-bid-value span{font-size:10px;color:var(--rtg-muted);font-weight:900}
+.rtg-bid-value strong{font:900 31px 'Barlow Condensed',sans-serif;color:var(--rtg-lime)}
+.rtg-opponent-scout{display:grid;grid-template-columns:70px 1fr minmax(205px,.8fr);gap:17px;align-items:center;border:1px solid var(--rtg-line);border-left:4px solid var(--rival-ink,var(--rtg-lime));border-radius:7px;padding:19px;background:var(--rtg-panel)}
+.rtg-opponent-mark{font:900 62px 'Barlow Condensed',sans-serif;color:var(--rival-ink);text-align:center}
+.rtg-opponent-scout h2{font-size:31px;margin:6px 0}
+.rtg-opponent-scout p{font-size:12px;color:var(--rtg-muted);line-height:1.55}
+.rtg-scout-tip{padding:13px;border:1px solid var(--rtg-line);border-radius:5px;display:flex;flex-direction:column;gap:7px;background:rgba(0,0,0,.16)}
+.rtg-scout-tip small{color:var(--rtg-muted);font-size:9px;font-weight:900;letter-spacing:.1em}
+.rtg-scout-tip strong{font:900 20px/1.2 'Barlow Condensed',sans-serif}
+.rtg-scout-tip>span{font-size:11px;color:var(--rtg-muted)}
+.rtg-prematch-plan>.rtg-subcopy{margin-bottom:15px}
+.rtg-promotion-alert{background:linear-gradient(105deg,#365835,#253d37);border:2px solid #b4d888;border-radius:8px;padding:20px;text-align:left;display:flex;flex-direction:column;gap:9px}
+.rtg-promotion-alert>span{font-size:10px;letter-spacing:.12em;font-weight:900;color:#d8ff9a}
+.rtg-promotion-alert strong{font:900 26px/1.2 'Barlow Condensed',sans-serif;text-transform:uppercase}
+.rtg-promotion-alert p{font-size:11px;color:#bfdbbc}
+.rtg-bench-growth{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rtg-bench-growth span{font-size:10px;font-weight:900;color:var(--rtg-lime);letter-spacing:.12em}
+.rtg-bench-growth strong{font-size:12px;font-family:'DM Sans',sans-serif}
+.rtg-checkpoint button:disabled{cursor:not-allowed;opacity:.42}
+@media(max-width:1100px){.rtg-youth-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rtg-opponent-scout{grid-template-columns:60px 1fr}.rtg-scout-tip{grid-column:1/-1}}
+@media(max-width:650px){
+ .rtg-stage-banner{padding:10px;gap:10px}
+ .rtg-stage-seal{width:42px;height:42px;font-size:27px}
+ .rtg-stage-banner strong{font-size:22px}
+ .rtg-stage-banner small{font-size:9px}
+ .rtg-stage-meter{display:none}
+ .rtg-rival-brief{padding:11px}
+ .rtg-youth-grid,.rtg-offer-grid{grid-template-columns:1fr}
+ .rtg-opponent-scout{grid-template-columns:43px 1fr;padding:12px;gap:10px}
+ .rtg-opponent-mark{font-size:44px}
+ .rtg-opponent-scout h2{font-size:26px}
+ .rtg-opponent-scout p{font-size:10px}
+ .rtg-youth-desk h3{font-size:28px}
+ .rtg-sale-card h3{font-size:27px}
+ .rtg-promotion-alert strong{font-size:22px}
+}
