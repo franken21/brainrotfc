@@ -67,7 +67,7 @@ function generateMarket(c){
   const p=player(c,role,rating,age,potential,'market');
   return {...p,fee:Math.max(24000,fee),type:['High-upside kid','Instant upgrade','Creative gamble','Proven starter','Future star'][mode]};
  });
- c.signed=false;c.scouted=false;c.scoutedId=null;
+ c.signed=false;c.scouted=false;c.scoutedId=null;c.windowPassed=false;c.tacticChosen=false;c.lastSigning=null;c.lastChoice=null;
 }
 function buildSeason(c){
  c.rivals=rivalsFor(c);c.table=startTable(c.rivals);
@@ -81,6 +81,7 @@ export function startCareer(input,clubId,seed=Date.now()){
  const club=CLUBS.find(x=>x.id===clubId);if(!club)throw Error('Choose a valid club');
  const c={id:club.id,club:club.name,crest:club.crest,colors:club.colors,season:1,tier:0,
   budget:club.budget,seed:(seed>>>0)||1,serial:0,roster:[],round:0,careerResults:[],memories:[],
+  supporters:club.id==='northstar'?920:club.id==='ironvale'?780:1100,momentum:50,reputation:10,
   run:(s.legacy.runs.length+1)};
  c.roster=ROLES.map((role,i)=>{
   const ovr=clamp(club.base+int(c,-7,6)+(club.bonus[role]||0),42,69);
@@ -100,6 +101,23 @@ export function lineup(c){
  });
 }
 export function starter(c,p){return lineup(c).some(x=>x?.id===p.id);}
+
+export function transferPreview(c,p){
+ const before=profile(c),roleStarters=lineup(c).filter(x=>x.role===p.role).sort((a,b)=>a.ovr-b.ovr);
+ const old=roleStarters[0]||null;
+ const modified={...c,roster:[...c.roster,{...p,origin:'transfer'}]};
+ const after=profile(modified);
+ const ageGroup=p.age<=19?'TEENAGE PROSPECT':p.age<=22?'BREAKOUT TALENT':p.age<=26?'ENTERING PRIME':'WIN-NOW VETERAN';
+ const gap=p.potential-p.ovr;
+ return {oldName:old?.name||'Open position',oldRating:old?.ovr||0,upgrade:Math.max(0,p.ovr-(old?.ovr||0)),
+  attack:after.attack-before.attack,defence:after.defence-before.defence,overall:after.overall-before.overall,
+  ageGroup,upside:gap>=17?'HIGH':gap>=10?'GOOD':'LIMITED',years:Math.max(0,Math.min(6,30-p.age))};
+}
+export function passMarket(input){
+ const s=clone(input),c=s.career;
+ if(!c||c.signed||c.windowPassed||c.match||c.report||c.checkpoint||c.seasonComplete)return s;
+ c.windowPassed=true;c.memories.unshift('The manager kept '+formatCash(c.budget)+' in reserve instead of buying this chapter.');return s;
+}
 export function teamRating(c){return Math.round(lineup(c).reduce((sum,p)=>sum+(p?.ovr||45),0)/11);}
 export function profile(c){
  const eleven=lineup(c),at=(role)=>eleven.filter(p=>p?.role===role);
@@ -126,23 +144,28 @@ function applyScore(table,home,away,hg,ag){
 export function standings(c){return [...c.table].sort((a,b)=>b.pts-a.pts||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf);}
 export function signPlayer(input,id){
  const s=clone(input),c=s.career;
- if(!c||c.match||c.report||c.checkpoint||c.seasonComplete||c.signed) return s;
+ if(!c||c.match||c.report||c.checkpoint||c.seasonComplete||c.signed||c.windowPassed) return s;
  const p=c.market.find(p=>p.id===id);
  if(!p||p.fee>c.budget)return s;
- const before=lineup(c).find(x=>x.role===p.role&&x.ovr===Math.min(...lineup(c).filter(x=>x.role===p.role).map(x=>x.ovr)));
+ const preview=transferPreview(c,p),reputationBefore=c.reputation;
  c.roster.push({...p,origin:'transfer'});c.budget-=p.fee;c.signed=true;
- c.memories.unshift('Signed '+p.name+' ('+p.role+', '+p.ovr+' OVR) for '+formatCash(p.fee)+'.'+(before&&p.ovr>before.ovr?' Replaces '+before.name+' in your XI.':''));
+ const excitement=preview.overall>0||preview.attack>0||preview.defence>0?75:20;
+ c.supporters+=excitement;c.reputation=clamp(c.reputation+(preview.overall>0?1:0),0,100);
+ c.lastSigning={id:p.id,name:p.name,role:p.role,age:p.age,ovr:p.ovr,potential:p.potential,fee:p.fee,
+  oldName:preview.oldName,oldRating:preview.oldRating,upgrade:preview.upgrade,attack:preview.attack,defence:preview.defence,
+  overall:preview.overall,budget:c.budget,supportersChange:excitement,reputationChange:c.reputation-reputationBefore};
+ c.memories.unshift('NEW SIGNING: '+p.name+' arrives from the transfer market. '+(preview.upgrade>0?'+ '+preview.upgrade+' OVR over the previous '+p.role+'.':'An investment in the future.'));
  return s;
 }
 export function scoutPlayer(input,id){
  const s=clone(input),c=s.career;
- if(!c||c.scouted||c.match||c.report||c.checkpoint)return s;
+ if(!c||c.scouted||c.signed||c.windowPassed||c.match||c.report||c.checkpoint||c.seasonComplete)return s;
  if(!c.market.some(p=>p.id===id))return s;
  c.scouted=true;c.scoutedId=id;return s;
 }
 export function chooseTactic(input,tactic){
  const s=clone(input),c=s.career;
- if(c&&!c.match&&!c.report&&!c.checkpoint&&TACTICS[tactic])c.tactic=tactic;
+ if(c&&!c.match&&!c.report&&!c.checkpoint&&!c.seasonComplete&&TACTICS[tactic]){c.tactic=tactic;c.tacticChosen=true;}
  return s;
 }
 function scorer(c){
@@ -214,8 +237,18 @@ export function finishMatch(input,choice='hold'){
  });
  const growth=growAfterMatch(c);
  const earned=ours>theirs?34000:ours===theirs?18000:9000;c.budget+=earned;
+ const supportersBefore=c.supporters,momentumBefore=c.momentum,reputationBefore=c.reputation;
+ const shock=m.fixture.opp.strength>teamRating(c)+5;
+ const supportersChange=ours>theirs?(shock?280:180)+int(c,0,80):ours===theirs?40+int(c,0,30):-Math.min(c.supporters-200,45+int(c,0,45));
+ c.supporters=Math.max(200,c.supporters+supportersChange);
+ c.momentum=clamp(c.momentum+(ours>theirs?17:ours===theirs?3:-13),0,100);
+ c.reputation=clamp(c.reputation+(ours>theirs?(shock?5:3):ours===theirs?1:-1),0,100);
  const report={fixture:m.fixture,events,ours,theirs,earned,growth,choice,
-  result:ours>theirs?'WIN':ours===theirs?'DRAW':'LOSS',tablePosition:0};
+  result:ours>theirs?'WIN':ours===theirs?'DRAW':'LOSS',tablePosition:0,
+  supportersBefore,supportersChange,supportersAfter:c.supporters,
+  momentumBefore,momentumChange:c.momentum-momentumBefore,momentumAfter:c.momentum,
+  reputationBefore,reputationChange:c.reputation-reputationBefore,reputationAfter:c.reputation,
+  topScorer:(()=>{const scorers=events.filter(x=>x.goal&&x.side==='you');return scorers.length?scorers[0].name:null;})()};
  c.seasonGoals+=ours;c.round++;
  report.tablePosition=standings(c).findIndex(x=>x.id==='you')+1;
  c.seasonResults.push({round:c.round,opponent:m.fixture.opp.name,home:m.fixture.home,ours,theirs,result:report.result});
@@ -249,7 +282,7 @@ export function chapterChoice(input,choice){
   result=choice==='attack'?'Attacking masterclass: ':'Defensive overhaul: ';
   result+=(target?.name||'Nobody')+' +'+amount+(secondary?', '+secondary.name+' +'+amount2:'')+' OVR.';
  }
- c.memories.unshift(result);c.checkpoint=false;generateMarket(c);return s;
+ c.memories.unshift(result);c.lastChoice={type:choice,message:result};c.checkpoint=false;generateMarket(c);c.lastChoice={type:choice,message:result};return s;
 }
 export function seasonSummary(c){
  const pos=standings(c).findIndex(x=>x.id==='you')+1;
@@ -265,6 +298,8 @@ export function advanceSeason(input){
  if(summary.promoted)c.tier++;
  else if(summary.relegated)c.tier--;
  c.season++;c.budget+=c.tier===0?180000:c.tier===1?1350000:9000000;
+ c.supporters+=summary.promoted?900:summary.relegated?-250:150;
+ c.reputation=clamp(c.reputation+(summary.promoted?12:summary.relegated?-6:3),0,100);c.momentum=50;
  c.roster.forEach(p=>{p.age++;p.form=0;});
  c.memories.unshift('Season '+(c.season-1)+' finished '+ordinal(summary.position)+'. '+(summary.promoted?'PROMOTED!':summary.relegated?'Relegated.':'Another chapter begins.'));
  buildSeason(c);return s;
@@ -294,6 +329,7 @@ export function validState(s){
  const c=s.career;if(!c)return true;
  if(!CLUBS.some(x=>x.id===c.id)||c.round<0||c.round>18||c.roster.length<11||c.market.length!==5)return false;
  if(c.budget<0||new Set(c.roster.map(p=>p.id)).size!==c.roster.length)return false;
+ if(!Number.isFinite(c.supporters)||c.supporters<200||!Number.isFinite(c.momentum)||c.momentum<0||c.momentum>100||!Number.isFinite(c.reputation)||c.reputation<0||c.reputation>100)return false;
  if(c.table.length!==10||c.table.some(x=>x.p!==c.round))return false;
  if(c.roster.some(p=>p.ovr>p.potential||p.ovr<0||p.potential>99))return false;
  if(c.match&&c.report)return false;
