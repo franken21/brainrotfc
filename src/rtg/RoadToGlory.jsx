@@ -293,6 +293,21 @@ function ChapterReward({c,go}){
   <div className="rtg-reward-next"><div><span className="rtg-eyebrow">UP NEXT · ROUND {c.round+1}</span><h3>{nextFixture(c)?.opp.name}</h3><small>Transfer window reopened · {formatCash(c.budget)} available</small></div><button type="button" className="rtg-button primary xl" onClick={()=>go('home')}>BACK TO CLUBHOUSE →</button></div>
  </div>;
 }
+
+function DivisionIntro({c,go}){
+ const d=DIVISION_CONFIG[c.tier],r=c.careerResults?.[c.careerResults.length-1],promoted=r?.promoted;
+ return <div className="rtg-flow rtg-division-intro">
+  <div className="rtg-division-intro-hero"><span className="rtg-eyebrow">SEASON {c.season} BEGINS · NEW FIXTURES</span><div className="rtg-division-intro-icon">{d.icon}</div>
+   <h1>{promoted?'WELCOME TO THE':r?.relegated?'A CHANCE TO REBUILD IN':'ANOTHER SHOT AT THE'}<br/><em>{DIVISIONS[c.tier].toUpperCase()}.</em></h1>
+   <p>{d.description}</p><div className="rtg-division-intro-stats"><span>NEW SEASON: {c.season}/5</span><span>18 MATCHES</span><span>TRANSFER FUNDS {formatCash(c.budget)}</span></div>
+  </div>
+  <section className="rtg-panel"><div className="rtg-panel-top"><span className="rtg-eyebrow">THE TEAMS WAITING FOR YOU</span><Pill>FRESH OPPOSITION</Pill></div>
+   <div className="rtg-new-rivals">{c.rivals.slice(0,3).map(rival=><div key={rival.id}><RivalBadge rival={rival}/><strong>{rival.name}</strong><small>{rival.nickname} · {rival.style.toUpperCase()}</small></div>)}</div>
+  </section>
+  <button type="button" className="rtg-button primary xl" onClick={()=>go('home')}>ENTER THE NEW SEASON →</button>
+ </div>;
+}
+
 function SeasonEnd({c,onAdvance,onArchive}){
  const s=seasonSummary(c);
  return <div className="rtg-flow rtg-seasonend"><Pill tone="lime">SEASON {c.season} COMPLETE</Pill><h1>{s.promoted?'WE ARE GOING UP.':s.relegated?'THE FIGHT IS ON.':s.position<=3?'SO CLOSE TO GLORY.':'A NEW CHAPTER AWAITS.'}</h1><p>{c.club} finish <strong>{ordinal(s.position)}</strong> in the {s.division} with <strong>{s.points} points</strong>. {s.promoted?'Promotion is yours. A bigger stage, a bigger budget, and fiercer rivals.':s.relegated?'Relegation hurts. But your story is not over.':'There is more to accomplish.'}</p>
@@ -308,7 +323,7 @@ export default function RoadToGlory(){
  const act=fn=>setGame(prev=>{const next=fn(prev);if(!validState(next)){console.error('Road to Glory rejected invalid state');setNotice('A save-integrity check prevented this action.');return prev;}return next;});
  const go=next=>{setView(next);window.scrollTo({top:0,behavior:'smooth'});};
  const start=id=>{act(s=>startCareer(s,id,Date.now()));go('home');};
- const advance=()=>{act(advanceSeason);go('home');};
+ const advance=()=>{act(advanceSeason);go('division-intro');};
  const finish=choice=>{act(s=>finishMatch(s,choice));go('result');};
  const continueReport=()=>{const next=c.seasonComplete?'season':c.checkpoint?'checkpoint':'home';act(dismissReport);go(next);};
  const choose=choice=>{act(s=>chapterChoice(s,choice));go('chapter-reward');};
@@ -319,16 +334,17 @@ export default function RoadToGlory(){
  if(!c)return <Landing legacy={game.legacy} onStart={start} onImport={importGame}/>;
  const club=CLUBS.find(x=>x.id===c.id);
  let activeView=c.report&&view==='result'?'result':c.match&&view==='match'?'match':view;
- if(!['home','market','squad','league','almanac','result','match','prematch','signing','sale','checkpoint','chapter-reward','season'].includes(activeView))activeView='home';
+ if(!['home','market','squad','league','almanac','result','match','prematch','signing','sale','division-intro','checkpoint','chapter-reward','season'].includes(activeView))activeView='home';
  if(activeView==='result'&&!c.report)activeView='home';
  if(activeView==='match'&&!c.match)activeView='home';
  if(activeView==='prematch'&&(c.match||c.report||c.checkpoint||c.seasonComplete))activeView='home';
  if(activeView==='signing'&&!c.lastSigning)activeView='home';
  if(activeView==='sale'&&!c.lastSale)activeView='home';
+ if(activeView==='division-intro'&&c.season<=1)activeView='home';
  if(activeView==='chapter-reward'&&!c.lastChoice)activeView='home';
  if(activeView==='checkpoint'&&!c.checkpoint)activeView='home';
  if(activeView==='season'&&!c.seasonComplete)activeView='home';
- const special=['prematch','result','match','checkpoint','chapter-reward','signing','sale','season'].includes(activeView);
+ const special=['prematch','result','match','checkpoint','chapter-reward','signing','sale','division-intro','season'].includes(activeView);
  return <div className={'rtg-app rtg-division-'+DIVISION_CONFIG[c.tier].key}><aside className="rtg-sidebar">
     <a className="rtg-brand" href="/"><span className="rtg-brand-symbol">R<span>✦</span></span><div><strong>ROAD TO GLORY</strong><small>POCKET EDITION</small></div></a>
     <div className="rtg-sideclub"><Badge club={club}/><div><span>THE MANAGER OF</span><strong>{c.club}</strong><small>{DIVISIONS[c.tier]} · S{c.season}</small></div></div>
@@ -347,6 +363,7 @@ export default function RoadToGlory(){
       {activeView==='match'&&<Match c={c} onFinish={finish}/>}
       {activeView==='signing'&&<SigningReveal c={c} go={go}/>}
       {activeView==='sale'&&<SaleReveal c={c} go={go}/>}
+      {activeView==='division-intro'&&<DivisionIntro c={c} go={go}/>}
       {activeView==='chapter-reward'&&<ChapterReward c={c} go={go}/>}
       {activeView==='result'&&<Report c={c} onContinue={continueReport}/>}
       {activeView==='checkpoint'&&<Checkpoint c={c} onPick={choose}/>}
