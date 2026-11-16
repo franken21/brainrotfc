@@ -377,3 +377,17 @@ test('trophy cabinet recovers historical titles in older saved careers',()=>{
  assert.equal(newRun.legacy.trophies.length,2);
  assert.ok(validState(newRun));
 });
+
+test('rival lineups vary between fresh careers instead of always showing the same nine names',()=>{
+ const pools=new Set();
+ const names=new Set();
+ for(let seed=100;seed<120;seed++){
+  const c=startCareer(freshState(),'oak',seed).career;
+  assert.equal(c.rivals.length,9);
+  assert.equal(new Set(c.rivals.map(x=>x.name)).size,9);
+  pools.add(c.rivals.map(x=>x.name).sort().join('|'));
+  c.rivals.forEach(r=>names.add(r.name));
+ }
+ assert.ok(pools.size>=4);
+ assert.ok(names.size>=11,'alternate coastal clubs appear over multiple careers');
+});
