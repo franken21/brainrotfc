@@ -91,7 +91,7 @@ function GoalScene({aim,setAim,league,flight,phase,player}){
      <div className="v2-goal-net"/>
      <div className="v2-goal-top"/>
      {phase==='ready'&&<div className="v2-aim-target" style={{left:(aim.x*100)+'%',top:(aim.y*100)+'%'}}><div className="v2-target-ring"/><div className="v2-target-dot"/></div>}
-     <Keeper x={phase==='flight'||phase==='result'?(shot?.frozen?.5:shot?.keeperX??.5):.5} y={phase==='flight'||phase==='result'?shot?.keeperY??.65:.65} dive={(phase==='flight'||phase==='result')&&!shot?.frozen} league={LEAGUES.indexOf(league)}/>
+     <Keeper x={phase==='flight'||phase==='result'?(shot?.frozen ? 0.5 : (shot?.keeperX ?? 0.5)):.5} y={phase==='flight'||phase==='result'?shot?.keeperY??.65:.65} dive={(phase==='flight'||phase==='result')&&!shot?.frozen} league={LEAGUES.indexOf(league)}/>
      <div className="v2-goal-hint">{phase==='ready'?'MOVE YOUR AIM · PICK A CORNER':' '}</div>
    </div>
    <div className="v2-spot"/>
