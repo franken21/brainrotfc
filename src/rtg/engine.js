@@ -220,30 +220,39 @@ function saleValue(c,p){
  return Math.round((cap*(.38+.35*quality+.17*future))/1000)*1000;
 }
 function offseasonOffers(c){
- const xi=new Set(lineup(c).map(p=>p.id));
- const fringe=c.roster.filter(p=>!xi.has(p.id)&&saleable(c,p))
+ // Choose two meaningful first-team sale candidates before clearing any reserves.
+ // Keep their positional backups, so the manager can actually accept either bid.
+ const originalXi=new Set(lineup(c).map(p=>p.id));
+ const originals=c.roster.filter(p=>originalXi.has(p.id)&&saleable(c,p));
+ const byRating=[...originals].sort((a,b)=>b.ovr-a.ovr||b.potential-a.potential);
+ const byPotential=[...originals].sort((a,b)=>b.potential-a.potential||b.ovr-a.ovr);
+ const picks=[];
+ if(byRating[0])picks.push(byRating[0]);
+ const other=byPotential.find(p=>p.id!==picks[0]?.id&&p.role!==picks[0]?.role)||
+  byPotential.find(p=>p.id!==picks[0]?.id);
+ if(other)picks.push(other);
+ const reserved=new Set();
+ for(const p of picks){
+  const replacement=c.roster.filter(x=>!originalXi.has(x.id)&&x.role===p.role)
+    .sort((a,b)=>b.ovr-a.ovr||b.potential-a.potential)[0];
+  if(replacement)reserved.add(replacement.id);
+ }
+ const fringe=c.roster.filter(p=>!originalXi.has(p.id)&&!reserved.has(p.id)&&saleable(c,p))
   .filter(p=>p.age>=24||p.potential<=p.ovr+5)
   .sort((a,b)=>a.potential-b.potential||b.age-a.age);
- const fringeIds=fringe.map(p=>p.id),fringeName=fringe.map(p=>p.name);
+ const fringeIds=fringe.map(p=>p.id);
  const bundle=fringe.length?Math.min(RESERVE_CAPS[c.tier],Math.round((RESERVE_CAPS[c.tier]*Math.min(1,fringe.length/5))/1000)*1000):0;
- // Automatically clear expendable fringe players at the end of the season.
- // High-potential youngsters are protected; even a cheap prospect can become a star.
  c.roster=c.roster.filter(p=>!fringeIds.includes(p.id));
  c.budget+=bundle;
- if(fringe.length)c.memories.unshift('Released '+fringe.length+' fringe players as a group for '+formatCash(bundle)+'. Future stars retained.');
- const starters=new Set(lineup(c).map(p=>p.id));
- const eligible=c.roster.filter(p=>starters.has(p.id)&&saleable(c,p));
- const byCurrent=[...eligible].sort((a,b)=>b.ovr-a.ovr||b.potential-a.potential);
- const byPotential=[...eligible].sort((a,b)=>b.potential-a.potential||b.ovr-a.ovr);
- const picks=[];
- if(byCurrent[0])picks.push(byCurrent[0]);
- if(byPotential.find(p=>p.id!==picks[0]?.id))picks.push(byPotential.find(p=>p.id!==picks[0]?.id));
+ if(fringe.length)c.memories.unshift('Group sale: '+fringe.length+' fringe reserves leave for '+formatCash(bundle)+'. Youth prospects retained.');
  const bidders=['Capital City FC','Royal Meridian','Granite County','Vanguard United','Copperford United'];
- const offers=picks.map((p,k)=>({id:p.id,playerId:p.id,fee:saleValue(c,p),kind:k===0?'STAR PLAYER':'YOUNG TALENT',
-  buyer:bidders[(c.season*2+c.tier*3+k)%bidders.length],ovr:p.ovr,potential:p.potential,age:p.age,role:p.role,name:p.name}));
- return {reviewed:false,offers,fringe:{count:fringe.length,names:fringeName,fee:bundle},
+ const offers=picks.filter(p=>c.roster.some(x=>x.id===p.id)&&saleable(c,p))
+  .map((p,k)=>({id:p.id,playerId:p.id,fee:saleValue(c,p),kind:k===0?'STAR PLAYER':'HIGH-POTENTIAL TALENT',
+   buyer:bidders[(c.season*2+c.tier*3+k)%bidders.length],ovr:p.ovr,potential:p.potential,age:p.age,role:p.role,name:p.name}));
+ return {reviewed:false,offers,fringe:{count:fringe.length,names:fringe.map(p=>p.name),fee:bundle},
   sale:null,startingBudget:c.budget,annualCap:SALE_CAPS[c.tier]};
 }
+
 export function resolveOffseason(input,playerId=null){
  const s=clone(input),c=s.career;
  if(!c||!c.seasonComplete||c.report||!c.offseason||c.offseason.reviewed)return s;
