@@ -194,7 +194,7 @@ function saleable(c,p){
 }
 function saleValue(c,p,star=false){
  const multiplier=c.tier===0?1:c.tier===1?12:85;
- return Math.round((p.ovr*12+Math.max(0,p.ovr-55)*48)*(star?1.8:1.15)*multiplier/10)*100;
+ return Math.round((p.ovr*12+Math.max(0,p.ovr-55)*48)*(star?1.8:1.15)*multiplier/10)*1000;
 }
 function createSaleOffers(c){
  if(c.roster.length<13)return [];
