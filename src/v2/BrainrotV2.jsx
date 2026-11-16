@@ -71,12 +71,13 @@ function PlayerCard({player,owned=false,active=false,onClick,compact=false}){
 function NavButton({id,icon,title,active,onClick,detail}){
  return <button className={'v2-nav-btn '+(active?'active':'')} onClick={()=>onClick(id)} type="button"><span className="v2-nav-ico">{icon}</span><span className="v2-nav-copy"><strong>{title}</strong><small>{detail}</small></span><span className="v2-nav-chevron">›</span></button>;
 }
-function GoalScene({aim,setAim,league,flight,phase,player}){
+function GoalScene({aim,setAim,setAimLocked,aimLocked,league,flight,phase,player}){
  const goalRef=useRef();
  const point=e=>{
   if(phase!=='ready'||!goalRef.current)return;
   const r=goalRef.current.getBoundingClientRect();
   setAim({x:Math.max(.05,Math.min(.95,(e.clientX-r.left)/r.width)),y:Math.max(.07,Math.min(.93,(e.clientY-r.top)/r.height))});
+  setAimLocked(true);
  };
  const shot=flight?.shot;
  const left=shot?shot.x:aim.x,top=shot?shot.y:aim.y;
@@ -87,12 +88,13 @@ function GoalScene({aim,setAim,league,flight,phase,player}){
    <div className="v2-banners"><span>BRAINROT!</span><span>⚡ NO FEAR · ALL FOOTBALL ⚡</span><span>FC FOREVER</span></div>
    <div className="v2-ground"><div className="v2-penalty-arc"/><div className="v2-penalty-line"/></div>
    <div className="v2-net-shadow"/>
-   <div className="v2-goal" ref={goalRef} onPointerMove={point} onPointerDown={point} role="group" aria-label="Aim at a spot in the goal">
+   <div className="v2-goal" ref={goalRef} onPointerDown={point} role="group" aria-label="Aim at a spot in the goal">
      <div className="v2-goal-net"/>
      <div className="v2-goal-top"/>
-     {phase==='ready'&&<div className="v2-aim-target" style={{left:(aim.x*100)+'%',top:(aim.y*100)+'%'}}><div className="v2-target-ring"/><div className="v2-target-dot"/></div>}
+     {phase==='ready'&&aimLocked&&<div className="v2-aim-target" style={{left:(aim.x*100)+'%',top:(aim.y*100)+'%'}}><div className="v2-target-ring"/><div className="v2-target-dot"/></div>}
+     {phase==='ready'&&!aimLocked&&<div className="v2-aim-callout">🎯<strong>CLICK A CORNER TO AIM</strong><small>Your target stays right where you put it.</small></div>}
      <Keeper x={phase==='flight'||phase==='result'?(shot?.frozen ? 0.5 : (shot?.keeperX ?? 0.5)):.5} y={phase==='flight'||phase==='result'?shot?.keeperY??.65:.65} dive={(phase==='flight'||phase==='result')&&!shot?.frozen} league={LEAGUES.indexOf(league)}/>
-     <div className="v2-goal-hint">{phase==='ready'?'MOVE YOUR AIM · PICK A CORNER':' '}</div>
+     <div className="v2-goal-hint">{phase==='ready'?(aimLocked?'TARGET LOCKED · CLICK TO RE-AIM':'CHOOSE YOUR SPOT'):' '}</div>
    </div>
    <div className="v2-spot"/>
    {phase==='flight'&&<Ball className="v2-flying-ball" style={{'--shot-x':left,'--shot-y':top,animationDuration:player.style==='Rocket'?'.58s':'.85s'}}/>}
@@ -115,8 +117,9 @@ function App(){
  const navigate=useNavigate();
  const [save,setSave]=useState(loadSave);
  const [view,setView]=useState('play');
- const [match,setMatch]=useState(null);
- const [phase,setPhase]=useState('intro');
+ const [match,setMatch]=useState(()=>({shots:[],rivals:[]}));
+ const [phase,setPhase]=useState('ready');
+ const [aimLocked,setAimLocked]=useState(false);
  const [aim,setAim]=useState({x:.74,y:.25});
  
  const timingRef=useRef(.5);
@@ -151,10 +154,10 @@ function App(){
    Sound({enabled:sound});
    setMatch({shots:[],rivals:[]});
    setSummary(null);setLast(null);setFlight(null);
-   setAim({x:.73,y:.24});setPhase('ready');setView('play');
+   setPhase('ready');setView('play');
  };
  const shoot=useCallback(()=>{
-   if(phase!=='ready'||!match)return;
+   if(phase!=='ready'||!match||!aimLocked)return;
    const shot=resolveShot(aim,timingRef.current,player,league);
    const rival=rivalKick(league);
    Sound({type:shot.outcome==='GOAL'?'goal':'miss',enabled:sound});
@@ -163,7 +166,7 @@ function App(){
      setMatch(prev=>({...prev,shots:[...prev.shots,shot],rivals:[...prev.rivals,rival]}));
      setLast(shot);setPhase('result');
    },900);
- },[phase,match,aim,player,league,sound]);
+ },[phase,match,aim,aimLocked,player,league,sound]);
  const advance=()=>{
    if(!match||phase!=='result')return;
    const goals=match.shots.filter(s=>s.outcome==='GOAL').length;
@@ -178,8 +181,13 @@ function App(){
      setPhase('finished');
      return;
    }
-   setLast(null);setFlight(null);setAim({x:.73,y:.24});setPhase('ready');
+   setLast(null);setFlight(null);setPhase('ready');
  };
+ useEffect(()=>{
+    if(phase!=='result'||view!=='play')return;
+    const next=setTimeout(()=>advance(),1850);
+    return ()=>clearTimeout(next);
+ },[phase,view,match]);
  useEffect(()=>{
   const handle=e=>{
    if(view!=='play'||e.target?.tagName==='INPUT')return;
@@ -188,6 +196,7 @@ function App(){
    if(phase==='ready'&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){
       e.preventDefault();
       setAim(a=>({x:Math.max(.05,Math.min(.95,a.x+(e.key==='ArrowRight'?delta:e.key==='ArrowLeft'?-delta:0))),y:Math.max(.07,Math.min(.93,a.y+(e.key==='ArrowDown'?delta:e.key==='ArrowUp'?-delta:0)))}));
+      setAimLocked(true);
    }
   };
   window.addEventListener('keydown',handle);return()=>window.removeEventListener('keydown',handle);
@@ -206,15 +215,22 @@ function App(){
    setView(id);Sound({enabled:sound});
  };
  const winProgress=save.wins[save.league];
- return <div className="v2-app">
+ const stories=[
+   'Nobody believes in Brainrot FC. Our squad is ridiculous, our pitch is a back alley, and the dream is to reach the world stage. It starts with one penalty.',
+   'We survived the streets. Now the Sunday League has heard about us. The crowd is bigger, the keeper is quicker, and the dream is getting real.',
+   'The joke team made it to the national league. Big crowds, serious rivals. They still think we are here by mistake. Prove them wrong.',
+   'Floodlights. Noise. A proper stadium. Every shot is a chance to write the next chapter of the strangest football story ever told.',
+   'From a backstreet goal to the biggest game in the world. One team of complete weirdos. One final shot at immortality.'
+ ];
+ return <div className={'v2-app v2-app-'+view}>
    <aside className="v2-side">
      <button className="v2-logo" onClick={()=>navigate('/')} aria-label="Go to home"><span className="v2-logo-mark">B<span>⚡</span></span><span>BRAINROT <b>FC</b><small>THE SHOOTOUT CLUB</small></span></button>
      <div className="v2-side-kicker">THE CLUBHOUSE</div>
      <nav className="v2-navigation" aria-label="Game sections">
-       <NavButton id="play" icon="⚽" title="The Pitch" detail="Play shootouts" active={view==='play'} onClick={changeView}/>
-       <NavButton id="club" icon="🎴" title="My Squad" detail={acquired+' / '+PLAYERS.length+' collected'} active={view==='club'} onClick={changeView}/>
-       <NavButton id="packs" icon="🎁" title="Pack Shop" detail="Discover new ballers" active={view==='packs'} onClick={changeView}/>
-       <NavButton id="journey" icon="🏆" title="Road to Glory" detail="Rise through the leagues" active={view==='journey'} onClick={changeView}/>
+       <NavButton id="play" icon="⚽" title="Play" detail="Back on the pitch" active={view==='play'} onClick={changeView}/>
+       <NavButton id="club" icon="🎴" title="The Team" detail="Choose your striker" active={view==='club'} onClick={changeView}/>
+       <NavButton id="packs" icon="🎁" title="Surprise Packs" detail="Find new teammates" active={view==='packs'} onClick={changeView}/>
+       <NavButton id="journey" icon="🏆" title="Our Story" detail="Road to glory" active={view==='journey'} onClick={changeView}/>
      </nav>
      <div className="v2-sidebar-bottom">
        <div className="v2-mini-league"><span>YOUR CURRENT LEAGUE</span><strong>{league.icon} {league.name}</strong><div className="v2-progress"><i style={{width:(winProgress/league.wins*100)+'%'}}/></div><small>{winProgress} / {league.wins} wins to promotion</small></div>
@@ -223,42 +239,43 @@ function App(){
    </aside>
    <div className="v2-main">
      <header className="v2-topbar">
-       <span className="v2-version"><span className="v2-pulse"/> RELOADED <em>V2.0</em></span>
-       <div className="v2-header-actions"><span className="v2-gold">🟡 <b>{save.coins.toLocaleString()}</b> <small>COINS</small></span><button className="v2-header-pack" onClick={()=>changeView('packs')}>✦ OPEN PACKS <span>›</span></button></div>
+       <span className="v2-version"><span className="v2-pulse"/> BRAINROT FC <em>ROAD TO GLORY</em></span>
+       <div className="v2-header-actions"><span className="v2-top-stage">{league.icon} {league.name} · CHAPTER {save.league+1}</span></div>
      </header>
      <main className="v2-content">
        {view==='play'&&<>
-         <div className="v2-page-heading">
-           <div><span className="v2-eyebrow">⚡ {league.tag}</span><h1>ONE KICK. <span>ALL GLORY.</span></h1><p>Pick your corner. Nail the timing. Become a legend.</p></div>
-           <div className="v2-heading-stats"><span><b>{save.totalGoals}</b> CAREER GOALS</span><span><b>{save.totalWins}</b> WINS</span></div>
+         <div className="v2-story-heading">
+           <div className="v2-story-kicker">CHAPTER {save.league+1} / {LEAGUES.length} &nbsp;·&nbsp; {league.name.toUpperCase()}</div>
+           <h1>WE'RE NOT SUPPOSED <span>TO WIN.</span></h1>
+           <p>{stories[save.league]}</p>
+           <div className="v2-story-progress"><strong>{league.icon} {league.name} <span>·</span> {winProgress}/{league.wins} WINS</strong><div className="v2-progress"><i style={{width:(winProgress/league.wins*100)+'%'}}/></div><small>{league.wins-winProgress} {league.wins-winProgress===1?'win':'wins'} until the next chapter</small></div>
          </div>
          <div className="v2-game-grid">
            <section className="v2-arena-panel">
-             <div className="v2-arena-top"><span><i className="v2-dot"/> {league.venue}</span><strong>{match?'MATCH DAY':'READY FOR KICK-OFF'}</strong></div>
+             <div className="v2-arena-top"><span><i className="v2-dot"/> {league.venue}</span><strong>{match.shots.length<5?'KICK '+(match.shots.length+1)+' OF 5':'SUDDEN DEATH'}</strong></div>
              <div className="v2-arena-body">
                {match&&<MatchStrip match={match}/>}
-               <GoalScene aim={aim} setAim={setAim} league={league} flight={flight} phase={phase} player={player}/>
-               {phase==='intro'&&<div className="v2-intro-overlay"><div className="v2-overlay-logo">⚽</div><span>THE NEXT CHALLENGE</span><h2>{league.name}</h2><p>Five kicks. One rival. Your chance to shine.</p><button className="v2-button-primary" onClick={startMatch}>START SHOOTOUT <b>↗</b></button></div>}
-               {phase==='result'&&last&&<div className={'v2-shot-overlay '+(last.outcome==='GOAL'?'scored':'not-scored')}>
-                 <span>{last.grade} RELEASE</span><h2>{last.outcome==='GOAL'?'GOOOAL!':last.outcome==='SAVED'?'WHAT A SAVE!':'WIDE OF THE MARK!'}</h2><p>{last.outcome==='GOAL'?'Top bins energy. Keep it going!':last.outcome==='SAVED'?'The keeper read that one. Try a corner.':'Find your rhythm and stay inside the posts.'}</p><button className="v2-button-primary" onClick={advance}>{match.shots.length>=5?'SEE RESULT / NEXT KICK':'NEXT KICK'} <b>→</b></button>
+               <GoalScene aim={aim} setAim={setAim} setAimLocked={setAimLocked} aimLocked={aimLocked} league={league} flight={flight} phase={phase} player={player}/>
+               {phase==='result'&&last&&<div className={'v2-shot-flash '+(last.outcome==='GOAL'?'scored':'not-scored')} role="status">
+                 <span>{last.grade} TIMING</span><h2>{last.outcome==='GOAL'?'GOOOAL!':last.outcome==='SAVED'?'DENIED!':'SO CLOSE!'}</h2><small>{last.outcome==='GOAL'?'The crowd goes wild!':last.outcome==='SAVED'?'Try a different corner.':'Keep it between the posts.'}</small><button onClick={advance}>NEXT KICK →</button>
                </div>}
-               {phase==='finished'&&summary&&<div className="v2-summary-overlay"><div className="v2-overlay-logo">{summary.won?'🏆':'💪'}</div><span>MATCH COMPLETE</span><h2>{summary.won?'VICTORY!':summary.goals===summary.opponent?'IT’S A DRAW':'SO CLOSE!'}</h2><p>{summary.goals} – {summary.opponent} · +{summary.coins} COINS</p>{summary.promoted&&<div className="v2-promoted">✨ PROMOTED TO {LEAGUES[save.league].name.toUpperCase()}!</div>}<div className="v2-summary-actions"><button className="v2-button-primary" onClick={startMatch}>PLAY AGAIN ↗</button><button className="v2-button-ghost" onClick={()=>{setPhase('intro');setMatch(null);setView('packs');}}>OPEN PACKS</button></div></div>}
+               {phase==='finished'&&summary&&<div className="v2-summary-overlay"><div className="v2-overlay-logo">{summary.won?'🏆':'💪'}</div><span>{summary.promoted?'A NEW CHAPTER BEGINS':'FULL TIME AT '+league.venue}</span><h2>{summary.promoted?'WE ARE GOING UP!':summary.won?"THAT'S OUR TEAM!":summary.goals===summary.opponent?'HEADS HELD HIGH':'WE GO AGAIN!'}</h2><p>{summary.goals}–{summary.opponent} against the rivals. {summary.won?'One step closer to the dream.':'The story isn’t over.'}</p>{summary.promoted&&<div className="v2-promoted">✨ WELCOME TO {LEAGUES[save.league].name.toUpperCase()}</div>}<div className="v2-summary-actions"><button className="v2-button-primary" onClick={startMatch}>BACK ON THE PITCH ⚽</button><button className="v2-button-ghost" onClick={()=>{setMatch({shots:[],rivals:[]});setPhase('ready');setView('packs');}}>MEET A NEW TEAMMATE 🎁</button></div></div>}
              </div>
              <div className="v2-arena-controls">
-               <div className="v2-aim-copy"><strong>01 / AIM</strong><span>Tap or move over the goal to place your target.</span></div>
-               <div className="v2-timing-controls"><div className="v2-meter-copy"><strong>02 / TIME IT</strong><span>Hit the bright green sweet spot</span></div><div className="v2-meter" aria-label="Moving timing indicator with green centre sweet spot"><div className="v2-meter-sweet"/><div className="v2-meter-perfect"/><div className="v2-meter-indicator" ref={meterIndicatorRef} style={{left:'50%'}}/></div><div className="v2-meter-labels"><span>EARLY</span><span>PERFECT</span><span>LATE</span></div></div>
-               <button className="v2-shoot-btn" disabled={phase!=='ready'} onClick={shoot}>⚽ <span>SHOOT!</span><small>SPACE / TAP</small></button>
+               <div className="v2-aim-copy"><strong>{aimLocked?'✓ AIM LOCKED':'1 · PICK YOUR SPOT'}</strong><span>Click a corner to lock your shot. Click again to change it.</span></div>
+               <div className="v2-timing-controls"><div className="v2-meter-copy"><strong>2 · TIME YOUR SHOT</strong><span>Press SHOOT when the marker reaches green.</span></div><div className="v2-meter" aria-label="Moving timing indicator with green centre sweet spot"><div className="v2-meter-sweet"/><div className="v2-meter-perfect"/><div className="v2-meter-indicator" ref={meterIndicatorRef} style={{left:'50%'}}/></div><div className="v2-meter-labels"><span>EARLY</span><span>PERFECT</span><span>LATE</span></div></div>
+               <button className="v2-shoot-btn" disabled={phase!=='ready'||!aimLocked} onClick={shoot}>⚽ <span>{aimLocked?'SHOOT!':'AIM FIRST'}</span><small>SPACE / TAP</small></button>
              </div>
            </section>
-           <aside className="v2-game-right">
-             <div className="v2-your-star"><div className="v2-right-label"><span>★ YOUR STARTING STRIKER</span><button onClick={()=>changeView('club')}>SWAP ↗</button></div><PlayerPortrait player={player}/><div className="v2-your-star-name"><span className={'v2-rarity v2-rarity-'+player.rarity}>{RARITY[player.rarity].label}</span><h3>{player.name}</h3><small>{player.tag}</small></div><div className="v2-two-stats"><span>SHOT POWER <b>{player.power}</b><i style={{width:player.power+'%'}}/></span><span>CONTROL <b>{player.control}</b><i style={{width:player.control+'%'}}/></span></div><div className="v2-perk">✦ <strong>{player.style.toUpperCase()}</strong> — {player.perk}</div></div>
-             <div className="v2-tip-card"><span>🎯 PRO TIP</span><strong>Pick a corner. Trust your timing.</strong><p>Shots close to the posts are harder to save. A perfect release keeps your shot on target!</p></div>
-           </aside>
+           <div className="v2-pitch-companions">
+             <button className="v2-companion" onClick={()=>changeView('club')} title="Change your striker"><PlayerPortrait player={player} size="small"/><span><small>ON THE BALL</small><strong>{player.name}</strong><em>{player.style} · {player.perk}</em></span><b>CHANGE PLAYER ↗</b></button>
+             <div className="v2-next-step"><span>🏆 THE DREAM</span><strong>From the backstreet goal to the world stage.</strong><button onClick={()=>changeView('journey')}>SEE THE JOURNEY →</button></div>
+           </div>
          </div>
        </>}
        {view==='club'&&<><div className="v2-page-heading"><div><span className="v2-eyebrow">★ YOUR COLLECTION</span><h1>MEET THE <span>WEIRDOS.</span></h1><p>Collect outrageous players. Every baller changes how your shots feel.</p></div><div className="v2-big-number">{acquired}<small> / {PLAYERS.length} UNLOCKED</small></div></div><div className="v2-section-header"><strong>YOUR PLAYER CARDS</strong><span>Select any unlocked card to make them your striker</span></div><div className="v2-cards-grid">{PLAYERS.map(p=><PlayerCard key={p.id} player={p} owned={save.owned.includes(p.id)} active={save.selected===p.id} onClick={()=>{setSave(s=>({...s,selected:p.id}));showNotice(p.name+' is your new striker!');}}/>)}</div></>}
-       {view==='packs'&&<><div className="v2-page-heading"><div><span className="v2-eyebrow">✦ THE PACK SHOP</span><h1>WHO'S IN <span>THE PACK?</span></h1><p>Three mystery players. Big surprises. Every duplicate gives you coins back.</p></div><div className="v2-big-number">{save.opened}<small> PACKS OPENED</small></div></div><div className="v2-pack-layout"><div className="v2-pack-showcase"><div className="v2-pack-rays"/><div className="v2-pack-art"><div className="v2-pack-art-top">BRAINROT <b>FC</b></div><div className="v2-pack-art-ball">⚽</div><div className="v2-pack-art-sub">MYSTERY<br/>BALLERS</div><div className="v2-pack-art-bottom">★ ★ ★</div></div><div className="v2-pack-stars">✦ &nbsp; ✧ &nbsp; ✦</div></div><div className="v2-pack-details"><span className="v2-eyebrow">THE ORIGINAL DROP</span><h2>THE CHAOS PACK</h2><p>Three players. At least one Rare or better if the others are Common. Your next superstar could be inside.</p><div className="v2-pack-features"><span>🎴 3 PLAYER CARDS</span><span>✨ EPICS & ICONS POSSIBLE</span><span>🟡 120 COINS BACK PER DUPLICATE</span></div><button className="v2-button-primary v2-buy-btn" onClick={openPack} disabled={save.coins<PACK_PRICE}>OPEN PACK · 🟡 {PACK_PRICE} <b>↗</b></button>{save.coins<PACK_PRICE&&<p className="v2-insufficient">Play shootouts to earn more coins!</p>}<small>Coins are earned in-game. No real money, no purchases.</small></div></div></>}
-       {view==='journey'&&<><div className="v2-page-heading"><div><span className="v2-eyebrow">🏆 YOUR STORY</span><h1>FROM CONCRETE <span>TO CONFETTI.</span></h1><p>Five stages. Bigger crowds. Tougher keepers. One shot at immortality.</p></div><div className="v2-big-number">{save.totalWins}<small> TOTAL WINS</small></div></div><div className="v2-journey">{LEAGUES.map((l,i)=><div key={l.id} className={'v2-journey-stop '+(i===save.league?'current':'')+(i<save.league?' completed':'')+(i>save.league?' upcoming':'')} style={{'--league-color':l.theme}}><div className="v2-journey-icon">{l.icon}</div><div className="v2-journey-content"><span>{String(i+1).padStart(2,'0')} / {l.tag}</span><h2>{l.name}</h2><small>{l.venue} · {l.wins} wins to clear</small><div className="v2-journey-progress"><i style={{width:((save.wins[i]||0)/l.wins*100)+'%'}}/></div><small>{save.wins[i]||0} / {l.wins} WINS</small></div><div className="v2-journey-status">{i<save.league?'✓ CLEARED':i===save.league?'● CURRENT':'🔒 LOCKED'}</div></div>)}</div></>}
+       {view==='packs'&&<><div className="v2-page-heading"><div><span className="v2-eyebrow">✦ THE CHANGING ROOM</span><h1>MEET YOUR <span>NEXT HERO.</span></h1><p>Every unlikely club needs unlikely heroes. Win games, earn a surprise pack, and see who wants to join the squad.</p></div><div className="v2-big-number">{save.opened}<small> PACKS OPENED</small></div></div><div className="v2-pack-layout"><div className="v2-pack-showcase"><div className="v2-pack-rays"/><div className="v2-pack-art"><div className="v2-pack-art-top">BRAINROT <b>FC</b></div><div className="v2-pack-art-ball">⚽</div><div className="v2-pack-art-sub">MYSTERY<br/>BALLERS</div><div className="v2-pack-art-bottom">★ ★ ★</div></div><div className="v2-pack-stars">✦ &nbsp; ✧ &nbsp; ✦</div></div><div className="v2-pack-details"><span className="v2-eyebrow">THE SURPRISE BOX</span><h2>THREE MYSTERY TEAMMATES.</h2><p>A new recruit could be a total disaster. Or the hero who takes you to the next league.</p><div className="v2-pack-features"><span>🎴 THREE SURPRISE CARDS</span><span>✨ SOME ARE RARER THAN OTHERS</span><span>🟡 {save.coins.toLocaleString()} MATCH COINS IN YOUR KIT BAG</span></div><button className="v2-button-primary v2-buy-btn" onClick={openPack} disabled={save.coins<PACK_PRICE}>OPEN A SURPRISE PACK · {PACK_PRICE} COINS <b>↗</b></button>{save.coins<PACK_PRICE&&<p className="v2-insufficient">Win a few shootouts to open another one!</p>}<small>All coins come from playing football. Nothing to buy with real money.</small></div></div></>}
+       {view==='journey'&&<><div className="v2-page-heading"><div><span className="v2-eyebrow">🏆 ONE IMPOSSIBLE FOOTBALL STORY</span><h1>FROM CONCRETE <span>TO CONFETTI.</span></h1><p>You started with a ball, a goal, and a team nobody took seriously. Win your way through five leagues to the world stage.</p></div><div className="v2-big-number">{save.totalWins}<small> TOTAL WINS</small></div></div><div className="v2-journey">{LEAGUES.map((l,i)=><div key={l.id} className={'v2-journey-stop '+(i===save.league?'current':'')+(i<save.league?' completed':'')+(i>save.league?' upcoming':'')} style={{'--league-color':l.theme}}><div className="v2-journey-icon">{l.icon}</div><div className="v2-journey-content"><span>{String(i+1).padStart(2,'0')} / {l.tag}</span><h2>{l.name}</h2><small>{l.venue} · {l.wins} wins to clear</small><div className="v2-journey-progress"><i style={{width:((save.wins[i]||0)/l.wins*100)+'%'}}/></div><small>{save.wins[i]||0} / {l.wins} WINS</small></div><div className="v2-journey-status">{i<save.league?'✓ CLEARED':i===save.league?'● CURRENT':'🔒 LOCKED'}</div></div>)}</div></>}
      </main>
      <footer className="v2-footer"><span>© BRAINROT FC · MADE FOR THE LOVE OF THE GAME</span><span>LOCAL SAVE · NO ACCOUNT NEEDED</span></footer>
    </div>
