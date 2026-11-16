@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
  freshState,startCareer,CLUBS,ROLES,FIXTURES,validState,lineup,teamRating,
- signPlayer,scoutPlayer,chooseTactic,transferPreview,passMarket,migrateState,clubBoost,MAX_SQUAD, DIVISION_CONFIG, sellPlayer, growthWatch,tacticalMatchup,kickoff,finishMatch,quickSim,dismissReport,
+ signPlayer,scoutPlayer,chooseTactic,transferPreview,passMarket,migrateState,clubBoost,MAX_SQUAD, DIVISION_CONFIG, sellPlayer, growthWatch,tacticalMatchup,resolveOffseason,startingChoices,kickoff,finishMatch,quickSim,dismissReport,
  chapterChoice,advanceSeason,archiveCareer,standings,seasonSummary
 } from '../src/rtg/engine.js';
 
@@ -75,6 +75,7 @@ test('deterministic run and full five-season archive survives JSON readback',()=
     assert.ok(validState(s),'persisted state valid');
    }
    assert.equal(s.career.round,18);
+   s=resolveOffseason(s,null);assert.ok(s.career.offseason.reviewed);
    if(season<5){s=advanceSeason(s);assert.equal(s.career.season,season+1);}
   }
   const end=seasonSummary(s.career);
@@ -228,7 +229,7 @@ test('each division has its own rivals, stadiums, colours and styles',()=>{
    // Force a promotion standing in this isolated world-generation test;
    // match/standings authenticity is covered by the full-season test above.
    s.career.table.find(x=>x.id==='you').pts=100;
-   s=advanceSeason(s);
+   s=resolveOffseason(s,null);s=advanceSeason(s);
   }
  }
  assert.equal(new Set(seen.map(x=>x.names.join(','))).size,3);
@@ -259,20 +260,76 @@ test('young bench player trains into first team without manual lineup changes',(
  assert.ok(signed.stats.apps<=s.career.round);
  assert.ok(validState(s));
 });
-test('incoming transfer bids offer a real sale-or-keep choice, never forced',()=>{
+test('no in-season bids; capped annual star offers and automatic fringe group sale',()=>{
  let s=startCareer(freshState(),'ironvale',991);
- assert.ok(s.career.saleOffers.length>=1);
- const offer=s.career.saleOffers[0],p=s.career.roster.find(x=>x.id===offer.id);
- const funds=s.career.budget,n=s.career.roster.length;
- assert.ok(offer.fee>20000,'offers are worth considering');
- s=sellPlayer(s,offer.id);
- assert.equal(s.career.roster.length,n-1);
- assert.equal(s.career.budget,funds+offer.fee);
- assert.equal(s.career.lastSale.name,p.name);
- assert.ok(s.career.sold);
- assert.deepEqual(sellPlayer(s,offer.id),s,'cannot sell twice within one chapter');
+ assert.equal(s.career.saleOffers.length,0,'there are no in-season sale offers');
+ for(let round=0;round<18;round++){
+  if(s.career.checkpoint)s=chapterChoice(s,'defence');
+  s=quickSim(s);s=dismissReport(s);
+  if(round<17)assert.equal(s.career.saleOffers.length,0);
+ }
+ assert.equal(s.career.seasonComplete,true);
+ const o=s.career.offseason;
+ assert.ok(o&&!o.reviewed);
+ assert.ok(o.offers.length>=1&&o.offers.length<=2,'one or two real decisions');
+ assert.ok(o.fringe.fee<=35000,'group clear-out revenue stays capped');
+ assert.ok(o.offers.every(x=>x.fee<=95000&&x.fee>0));
+ assert.ok(o.offers.every(x=>Number.isFinite(x.potential)&&Number.isFinite(x.ovr)));
+ const before=s.career.budget,offer=o.offers[0],previous=s.career.roster.length;
+ assert.deepEqual(advanceSeason(s),s,'cannot skip required year-end decision');
+ s=resolveOffseason(s,offer.playerId);
+ assert.equal(s.career.budget,before+offer.fee);
+ assert.equal(s.career.roster.length,previous-1);
+ assert.equal(s.career.offseason.sale.name,offer.name);
+ assert.deepEqual(resolveOffseason(s,null),s,'cannot sell a second star');
  assert.ok(validState(s));
 });
+test('keeping your star is a genuine choice and clearing reserves keeps youth prospects',()=>{
+ let s=startCareer(freshState(),'northstar',333);
+ const young=s.career.roster.find(p=>p.age<=21);
+ for(let i=0;i<18;i++){
+  if(s.career.checkpoint)s=chapterChoice(s,'defence');
+  s=quickSim(s);s=dismissReport(s);
+ }
+ const before=s.career.roster.length;
+ const purse=s.career.budget;
+ s=resolveOffseason(s,null);
+ assert.equal(s.career.roster.length,before);
+ assert.equal(s.career.budget,purse);
+ assert.equal(s.career.offseason.sale,null);
+ assert.ok(validState(s));
+});
+test('trophies unlock only for genuine league titles and survive a new career',()=>{
+ let s=startCareer(freshState(),'northstar',804);
+ for(let i=0;i<17;i++){
+  if(s.career.checkpoint)s=chapterChoice(s,'defence');
+  s=quickSim(s);s=dismissReport(s);
+ }
+ // Isolated title-award test: force table lead then play the actual final fixture.
+ s.career.table.find(r=>r.id==='you').pts=100;
+ s=quickSim(s);
+ assert.equal(s.career.seasonComplete,true);
+ assert.equal(s.career.currentTrophy?.kind,'champion');
+ assert.equal(s.career.trophies.length,1);
+ assert.equal(s.career.trophies[0].tier,0);
+ s=dismissReport(s);s=resolveOffseason(s,null);
+ s=advanceSeason(s);
+ assert.equal(s.career.trophies.length,1,'club cabinet carries trophies between seasons');
+ assert.equal(s.career.currentTrophy,null);
+ assert.ok(validState(JSON.parse(JSON.stringify(s))));
+});
+test('starting shortlist rotates across 12 different club identities',()=>{
+ const all=new Set();
+ for(let n=0;n<12;n++){
+  const short=startingChoices(51983,n);
+  assert.equal(short.length,3);
+  assert.equal(new Set(short.map(x=>x.id)).size,3);
+  short.forEach(x=>{all.add(x.id);assert.ok(x.crest&&x.colors.length===2&&x.weak);});
+ }
+ assert.ok(all.size>=9,'the opening screen offers genuine variety');
+ assert.deepEqual(startingChoices(51983,2),startingChoices(51983,2));
+});
+
 test('persistent club tactics and matchup advantages make scouting useful',()=>{
  let s=startCareer(freshState(),'northstar',98);
  s=chooseTactic(s,'counter');
