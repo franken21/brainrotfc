@@ -367,3 +367,8 @@
 .rtg-matchday-bonuses{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
 .rtg-matchday-bonuses span{font-size:10px;letter-spacing:.07em;font-weight:900;padding:7px 10px;border-radius:4px;background:#253d2b;border:1px solid #608462;color:var(--rtg-lime)}
 @media(max-width:650px){.rtg-matchday-bonuses{gap:5px}.rtg-matchday-bonuses span{font-size:8px;padding:6px 7px}}
+
+.rtg-landing-actions{justify-content:flex-start;flex-wrap:wrap}
+.rtg-landing-actions .rtg-button.secondary{min-width:215px}
+.rtg-landing-actions small{margin-left:auto;align-self:center}
+@media(max-width:650px){.rtg-landing-actions .rtg-button.secondary{min-width:0;width:100%}.rtg-landing-actions small{margin:0;align-self:center}}
