@@ -71,7 +71,7 @@ function PlayerCard({player,owned=false,active=false,onClick,compact=false}){
 function NavButton({id,icon,title,active,onClick,detail}){
  return <button className={'v2-nav-btn '+(active?'active':'')} onClick={()=>onClick(id)} type="button"><span className="v2-nav-ico">{icon}</span><span className="v2-nav-copy"><strong>{title}</strong><small>{detail}</small></span><span className="v2-nav-chevron">›</span></button>;
 }
-function GoalScene({aim,setAim,league,flight,phase,onShoot}){
+function GoalScene({aim,setAim,league,flight,phase,player}){
  const goalRef=useRef();
  const point=e=>{
   if(phase!=='ready'||!goalRef.current)return;
@@ -91,11 +91,11 @@ function GoalScene({aim,setAim,league,flight,phase,onShoot}){
      <div className="v2-goal-net"/>
      <div className="v2-goal-top"/>
      {phase==='ready'&&<div className="v2-aim-target" style={{left:(aim.x*100)+'%',top:(aim.y*100)+'%'}}><div className="v2-target-ring"/><div className="v2-target-dot"/></div>}
-     <Keeper x={phase==='flight'||phase==='result'?shot?.keeperX??.5:.5} y={phase==='flight'||phase==='result'?shot?.keeperY??.65:.65} dive={(phase==='flight'||phase==='result')&&!shot?.frozen} league={LEAGUES.indexOf(league)}/>
+     <Keeper x={phase==='flight'||phase==='result'?(shot?.frozen?.5:shot?.keeperX??.5):.5} y={phase==='flight'||phase==='result'?shot?.keeperY??.65:.65} dive={(phase==='flight'||phase==='result')&&!shot?.frozen} league={LEAGUES.indexOf(league)}/>
      <div className="v2-goal-hint">{phase==='ready'?'MOVE YOUR AIM · PICK A CORNER':' '}</div>
    </div>
    <div className="v2-spot"/>
-   {phase==='flight'&&<Ball className="v2-flying-ball" style={{'--shot-x':left,'--shot-y':top,animationDuration:shot?.frozen?'.84s':undefined}}/>}
+   {phase==='flight'&&<Ball className="v2-flying-ball" style={{'--shot-x':left,'--shot-y':top,animationDuration:player.style==='Rocket'?'.58s':'.85s'}}/>}
    {phase!=='flight'&&<div className="v2-idle-ball"><Ball/></div>}
    <div className="v2-scenebottom"><span>◉ LIVE FROM {league.venue}</span><span className="v2-live-dot">● LIVE</span></div>
  </div>;
@@ -237,7 +237,7 @@ function App(){
              <div className="v2-arena-top"><span><i className="v2-dot"/> {league.venue}</span><strong>{match?'MATCH DAY':'READY FOR KICK-OFF'}</strong></div>
              <div className="v2-arena-body">
                {match&&<MatchStrip match={match}/>}
-               <GoalScene aim={aim} setAim={setAim} league={league} flight={flight} phase={phase}/>
+               <GoalScene aim={aim} setAim={setAim} league={league} flight={flight} phase={phase} player={player}/>
                {phase==='intro'&&<div className="v2-intro-overlay"><div className="v2-overlay-logo">⚽</div><span>THE NEXT CHALLENGE</span><h2>{league.name}</h2><p>Five kicks. One rival. Your chance to shine.</p><button className="v2-button-primary" onClick={startMatch}>START SHOOTOUT <b>↗</b></button></div>}
                {phase==='result'&&last&&<div className={'v2-shot-overlay '+(last.outcome==='GOAL'?'scored':'not-scored')}>
                  <span>{last.grade} RELEASE</span><h2>{last.outcome==='GOAL'?'GOOOAL!':last.outcome==='SAVED'?'WHAT A SAVE!':'WIDE OF THE MARK!'}</h2><p>{last.outcome==='GOAL'?'Top bins energy. Keep it going!':last.outcome==='SAVED'?'The keeper read that one. Try a corner.':'Find your rhythm and stay inside the posts.'}</p><button className="v2-button-primary" onClick={advance}>{match.shots.length>=5?'SEE RESULT / NEXT KICK':'NEXT KICK'} <b>→</b></button>
