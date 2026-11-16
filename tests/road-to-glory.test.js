@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
  freshState,startCareer,CLUBS,ROLES,FIXTURES,validState,lineup,teamRating,
- signPlayer,scoutPlayer,chooseTactic,transferPreview,passMarket,migrateState,kickoff,finishMatch,quickSim,dismissReport,
+ signPlayer,scoutPlayer,chooseTactic,transferPreview,passMarket,migrateState,clubBoost,kickoff,finishMatch,quickSim,dismissReport,
  chapterChoice,advanceSeason,archiveCareer,standings,seasonSummary
 } from '../src/rtg/engine.js';
 
@@ -197,4 +197,16 @@ test('existing V1 browser career and imported backup migrate safely',()=>{
  const restoredSigned=migrateState(signed);
  assert.equal(restoredSigned.career.lastSigning.name,target.name);
  assert.equal(validState(restoredSigned),true);
+});
+
+test('winning momentum and a bigger home crowd improve actual match strength',()=>{
+ const c=startCareer(freshState(),'northstar',91).career;
+ const neutral=clubBoost(c,true);
+ assert.equal(neutral.confidence,0);
+ c.momentum=85;c.supporters=3500;
+ const home=clubBoost(c,true),away=clubBoost(c,false);
+ assert.ok(home.confidence>neutral.confidence);
+ assert.ok(home.crowd>neutral.crowd);
+ assert.equal(away.crowd,0);
+ assert.equal(away.confidence,home.confidence);
 });
