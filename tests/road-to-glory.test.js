@@ -216,39 +216,24 @@ test('each division has its own rivals, stadiums, colours and styles',()=>{
  let s=startCareer(freshState(),'northstar',913);
  const seen=[];
  for(let tier=0;tier<3;tier++){
-  if(tier){
-   s.career.tier=tier;
-   // Advancing to the next division generates a new football world.
-   s.career.rivals=Array.from({length:9},()=>({}));
-   // Recreate the league through actual season transition instead of inventing fixture results.
-   let next=startCareer(freshState(),'northstar',913);
-   next.career.tier=tier;
-   // Existing public engine has a start-of-season transition; use 18 real games.
-   for(let round=0;round<18;round++){
-    if(next.career.checkpoint)next=chapterChoice(next,'defence');
-    next=quickSim(next);next=dismissReport(next);
-   }
-   assert.equal(next.career.seasonComplete,true);
-   next.career.table.find(x=>x.id==='you').pts=100;
-   next=advanceSeason(next);
-   s=next;
-   if(tier===2){
-    // Advance once more to the top level.
-    for(let round=0;round<18;round++){
-      if(s.career.checkpoint)s=chapterChoice(s,'defence');
-      s=quickSim(s);s=dismissReport(s);
-    }
-    s.career.table.find(x=>x.id==='you').pts=100;
-    s=advanceSeason(s);
-   }
-  }
-  seen.push({division:DIVISION_CONFIG[s.career.tier]?.key,names:s.career.rivals.map(x=>x.name),styles:s.career.rivals.map(x=>x.style)});
+  assert.equal(s.career.tier,tier);
+  seen.push({division:DIVISION_CONFIG[tier].key,names:s.career.rivals.map(x=>x.name)});
   assert.equal(new Set(s.career.rivals.map(x=>x.name)).size,9);
   assert.ok(s.career.rivals.every(x=>x.venue&&x.nickname&&x.color&&['balanced','press','counter'].includes(x.style)));
+  if(tier<2){
+   for(let round=0;round<18;round++){
+    if(s.career.checkpoint)s=chapterChoice(s,'defence');
+    s=quickSim(s);s=dismissReport(s);
+   }
+   // Force a promotion standing in this isolated world-generation test;
+   // match/standings authenticity is covered by the full-season test above.
+   s.career.table.find(x=>x.id==='you').pts=100;
+   s=advanceSeason(s);
+  }
  }
- assert.equal(new Set(seen.map(x=>x.division)).size,3);
  assert.equal(new Set(seen.map(x=>x.names.join(','))).size,3);
 });
+
 test('young bench player trains into first team without manual lineup changes',()=>{
  let s=startCareer(freshState(),'northstar',889);
  const starter=s.career.roster.find(p=>p.id===lineup(s.career).find(p=>p.role==='ST').id);
