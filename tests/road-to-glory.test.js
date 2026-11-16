@@ -358,3 +358,22 @@ test('full squad blocks new players without blocking actual match progression',(
  assert.ok(!s.career.checkpoint,'coaching path remains available');
  assert.ok(validState(s));
 });
+
+test('trophy cabinet recovers historical titles in older saved careers',()=>{
+ const old=freshState();
+ delete old.legacy.trophies;
+ old.legacy.runs=[{id:1,club:'Northstar Rovers',results:[
+   {season:1,position:1,division:'Coastal Division'},
+   {season:2,position:4,division:'National Division'},
+   {season:3,position:1,division:'National Division'}
+ ]}];
+ const restored=migrateState(old);
+ assert.equal(restored.legacy.trophies.length,2);
+ assert.equal(restored.legacy.trophies[0].label,'Champion of Coastal Division');
+ assert.equal(restored.legacy.trophies[1].label,'Champion of National Division');
+ const twice=migrateState(restored);
+ assert.equal(twice.legacy.trophies.length,2,'restoring the same archive never duplicates trophies');
+ const newRun=startCareer(twice,'amber',42);
+ assert.equal(newRun.legacy.trophies.length,2);
+ assert.ok(validState(newRun));
+});
