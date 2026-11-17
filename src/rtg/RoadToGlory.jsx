@@ -73,11 +73,12 @@ function Landing({legacy,onStart,onImport}){
      <div className="rtg-clubchoice-bottom"><span>STARTING FUNDS <b>{formatCash(club.budget)}</b></span><span className="rtg-select-dot">{selection===club.id?'✓':'↗'}</span></div>
     </button>)}</div>
    <div className="rtg-landing-actions"><button type="button" className="rtg-button primary xl" disabled={!selection} onClick={()=>onStart(selection)}>BEGIN YOUR CAREER <span>→</span></button><button type="button" className="rtg-button secondary xl" onClick={()=>importRef.current?.click()}>↑ CONTINUE FROM SAVE</button><input ref={importRef} hidden type="file" accept=".json,application/json" onChange={restoreBackup}/><small>Stored in your browser. No account needed.</small></div>
-   {legacy.runs.length>0&&<div className="rtg-returning"><span className="rtg-eyebrow">YOUR FOOTBALL LEGACY</span><strong>{legacy.runs.length} completed career{legacy.runs.length===1?'':'s'} · {legacy.legends.length} players immortalised</strong><p>Your history stays with you across new runs.</p></div>}
+   {!!legacy.trophies?.length&&<TrophyCabinet trophies={legacy.trophies} mini/>}
+    {legacy.runs.length>0&&<div className="rtg-returning"><span className="rtg-eyebrow">YOUR FOOTBALL LEGACY</span><strong>{legacy.runs.length} completed career{legacy.runs.length===1?'':'s'} · {legacy.legends.length} players immortalised</strong><p>Your history stays with you across new runs.</p></div>}
   </div>
  </div>;
 }
-function Dashboard({c,go,onNewGame}){
+function Dashboard({c,go,onNewGame,legacyTrophies=[]}){
  const f=nextFixture(c),club=CLUBS.find(x=>x.id===c.id),p=profile(c),position=standings(c).findIndex(x=>x.id==='you')+1;
  const next=c.report?'result':c.checkpoint?'checkpoint':c.seasonComplete?'season':c.match?'match':null;
  const marketOpen=!c.signed&&!c.windowPassed&&!c.seasonComplete&&c.roster.length<MAX_SQUAD;
@@ -109,7 +110,7 @@ function Dashboard({c,go,onNewGame}){
    </section>
   </div>
   <div className="rtg-dashboard-foot">
-   <TrophyCabinet trophies={c.trophies||[]} mini go={go}/>
+   <TrophyCabinet trophies={[...legacyTrophies,...(c.trophies||[])]} mini go={go}/>
    <button className="rtg-youth-shortcut" type="button" onClick={()=>go('squad')}><span>✦ YOUTH WATCH</span><strong>{youth?youth.name:'Find the next club legend'}</strong><small>{youth?'AGE '+youth.age+' · '+youth.ovr+' OVR · '+(youth.growth||0)+' GROWN':'The reserves train between fixtures'}</small><b>VIEW SQUAD →</b></button>
   </div>
  </div>;
@@ -398,7 +399,7 @@ export default function RoadToGlory(){
    <div className="rtg-shell"><header className="rtg-topbar"><div><span className="rtg-topbar-issue">THE FOOTBALL CHRONICLE</span><span className="rtg-topbar-title">S{c.season} · MATCHWEEK {Math.min(18,c.round+1)} / 18</span></div><div className="rtg-topbar-right"><span className="rtg-live-dot"/> <span className="rtg-topbar-save">AUTO SAVED</span> <span className="rtg-topbar-divider"/> <b className="rtg-topbar-fans">♬ {c.supporters.toLocaleString('en-GB')} FANS</b> <span className="rtg-topbar-divider"/> <b>{formatCash(c.budget)}</b><button type="button" className="rtg-topbar-newgame" onClick={openNewGame}>↻ NEW GAME</button></div></header>
     {notice&&<div className="rtg-notice" role="status">{notice}<button onClick={()=>setNotice('')}>×</button></div>}
     <main className={'rtg-main '+(special?'rtg-main-special':'')}>
-      {activeView==='home'&&<Dashboard c={c} go={go} onNewGame={openNewGame}/>}
+      {activeView==='home'&&<Dashboard c={c} go={go} onNewGame={openNewGame} legacyTrophies={game.legacy.trophies||[]}/>}
       {activeView==='squad'&&<Squad c={c} act={act} go={go}/>}
       {activeView==='market'&&<Market c={c} act={act} go={go}/>}
       {activeView==='league'&&<League c={c}/>}
