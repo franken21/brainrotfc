@@ -456,7 +456,7 @@ test('budget visibly falls by the exact transfer fee, including cash before/afte
   assert.ok(validState(state));
   const afterReload=JSON.parse(JSON.stringify(state));
   assert.equal(afterReload.career.budget,before-player.fee,'reloading must never refund a signing');
- });
+ }
 });
 test('every match result has small tier-scaled income; balance equals previous balance plus earnings',()=>{
  for(let tier=0;tier<3;tier++){
