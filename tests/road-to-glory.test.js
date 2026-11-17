@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
- freshState,startCareer,restartCareer,CLUBS,ROLES,FIXTURES,validState,lineup,teamRating,
+ freshState,startCareer,restartCareer,ECONOMY,matchdayIncome,CLUBS,ROLES,FIXTURES,validState,lineup,teamRating,
  signPlayer,scoutPlayer,chooseTactic,transferPreview,passMarket,migrateState,clubBoost,MAX_SQUAD, DIVISION_CONFIG, growthWatch,tacticalMatchup,resolveOffseason,startingChoices,kickoff,finishMatch,quickSim,dismissReport,
  chapterChoice,advanceSeason,archiveCareer,standings,seasonSummary
 } from '../src/rtg/engine.js';
@@ -441,4 +441,80 @@ test('cancelled restart leaves career state entirely unchanged',()=>{
  assert.ok(s.career);
  // Closing the confirmation dialog never invokes restartCareer.
  assert.equal(JSON.stringify(s),before);
+});
+
+test('budget visibly falls by the exact transfer fee, including cash before/after on the contract',()=>{
+ for(const club of CLUBS){
+  let state=startCareer(freshState(),club.id,644);
+  const before=state.career.budget,player=state.career.market.find(x=>x.fee<=before);
+  assert.ok(player,'at least one player should be affordable at the start');
+  state=signPlayer(state,player.id);
+  assert.equal(state.career.budget,before-player.fee);
+  assert.equal(state.career.lastSigning.budgetBefore,before);
+  assert.equal(state.career.lastSigning.budget,before-player.fee);
+  assert.ok(state.career.lastSigning.fee>0);
+  assert.ok(validState(state));
+  const afterReload=JSON.parse(JSON.stringify(state));
+  assert.equal(afterReload.career.budget,before-player.fee,'reloading must never refund a signing');
+ });
+});
+test('every match result has small tier-scaled income; balance equals previous balance plus earnings',()=>{
+ for(let tier=0;tier<3;tier++){
+  let state=startCareer(freshState(),'northstar',1337);
+  state.career.tier=tier;
+  const c=state.career,cap=ECONOMY[tier].match.WIN+ECONOMY[tier].reputationBonusMax;
+  assert.ok(matchdayIncome(c,'WIN').total<=cap);
+  assert.ok(matchdayIncome(c,'DRAW').total<matchdayIncome(c,'WIN').total);
+  assert.ok(matchdayIncome(c,'LOSS').total<matchdayIncome(c,'DRAW').total);
+  const before=c.budget;
+  state=quickSim(state);
+  const earned=state.career.report.earned;
+  assert.equal(state.career.budget,before+earned);
+  assert.ok(earned<=cap);
+  assert.ok(earned>0);
+ }
+});
+test('first expensive signing creates an actual savings period, not three games of free reimbursement',()=>{
+ let s=startCareer(freshState(),'northstar',42);
+ const firstBig=s.career.market[1],budgetBefore=s.career.budget;
+ assert.ok(firstBig.fee<=budgetBefore);
+ s=signPlayer(s,firstBig.id);
+ assert.equal(s.career.budget,budgetBefore-firstBig.fee);
+ assert.ok(s.career.budget<50000,'statement signing burns most opening budget');
+ for(let i=0;i<3;i++){s=quickSim(s);s=dismissReport(s);}
+ s=chapterChoice(s,'defence');
+ const nextBig=s.career.market[1];
+ assert.ok(nextBig.fee>s.career.budget,'manager cannot immediately afford next chapter star');
+ const budgetNow=s.career.budget;
+ const refused=signPlayer(s,nextBig.id);
+ assert.equal(refused.career.budget,budgetNow);
+ assert.equal(refused.career.signed,false);
+ assert.ok(validState(refused));
+});
+test('even a perfect Coastal season cannot afford six cheap transfers',()=>{
+ const richest=Math.max(...CLUBS.map(x=>x.budget));
+ const absoluteMaxIncome=18*(ECONOMY[0].match.WIN+ECONOMY[0].reputationBonusMax);
+ const cheapestPossible=([90,189,125,157,111][0]-7)*1000;
+ assert.ok(6*cheapestPossible>richest+absoluteMaxIncome,
+  'six chapter signings cannot all be paid for by even the richest club with a perfect record');
+});
+test('actual full-season manager must pass on multiple tempting star signings',()=>{
+ let s=startCareer(freshState(),'copper',321);
+ let signed=0,missed=0;
+ for(let round=0;round<18;round++){
+  if(s.career.checkpoint)s=chapterChoice(s,'defence');
+  if(round%3===0){
+   const star=s.career.market[1];
+   if(star.fee<=s.career.budget){s=signPlayer(s,star.id);signed++;}
+   else missed++;
+  }
+  s=quickSim(s);
+  assert.ok(s.career.report);
+  assert.ok(s.career.budget>=0);
+  s=dismissReport(s);
+ }
+ assert.ok(signed>=1,'a rich club still gets an exciting early signing');
+ assert.ok(missed>=3,'manager has to skip at least half the star windows');
+ assert.ok(s.career.budget>=0);
+ assert.ok(validState(s));
 });
