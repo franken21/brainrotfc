@@ -4,6 +4,18 @@ export const SAVE_KEY = 'rtg-pocket-v1';
 export const VERSION = 1;
 export const DIVISIONS = ['Coastal Division', 'National Division', 'Premier Division'];
 export const MAX_SQUAD = 20;
+// Six windows across 18 fixtures, but enough cash for only a few meaningful signings.
+// Each higher tier scales both recruitment costs and matchday receipts.
+export const ECONOMY = [
+ {match:{WIN:11000,DRAW:7000,LOSS:4000},reputationBonusMax:2500,seasonGrant:105000,transferScale:1},
+ {match:{WIN:100000,DRAW:65000,LOSS:35000},reputationBonusMax:20000,seasonGrant:800000,transferScale:12},
+ {match:{WIN:750000,DRAW:450000,LOSS:250000},reputationBonusMax:150000,seasonGrant:6000000,transferScale:95}
+];
+export function matchdayIncome(c,result){
+ const rules=ECONOMY[c.tier];
+ const reputationBonus=Math.round(rules.reputationBonusMax*Math.min(100,Math.max(0,c.reputation))/100/500)*500;
+ return {base:rules.match[result],reputationBonus,total:rules.match[result]+reputationBonus};
+}
 export const DIVISION_CONFIG = [
  {key:'coastal',icon:'⚓',subtitle:'THE LOCAL CIRCUIT',description:'Rainy terraces, fierce derbies and grounds where everyone knows your name.',venue:'LOCAL GROUNDS',palette:['#d9fc77','#1e503a','#0b1714']},
  {key:'national',icon:'⚙',subtitle:'THE NATIONAL LEAGUE',description:'Packed away ends, industrial cities, bruising battles and higher stakes.',venue:'NATIONAL STADIUMS',palette:['#ffc082','#713c2c','#191512']},
@@ -132,9 +144,9 @@ function generateMarket(c){
   const rating=clamp(base+[-3,7,2,5,0][mode]+int(c,-3,3),47,94);
   const age=[18,28,23,25,20][mode]+int(c,-1,2);
   const potential=clamp(rating+[18,3,11,6,16][mode]+int(c,-2,4),rating,98);
-  const fee=Math.round(([52,132,84,103,66][mode]*(c.tier===0?1:c.tier===1?12:95)+int(c,-8,8)*(c.tier===0?1:c.tier===1?9:65))*1000/1000)*1000;
+   const fee=Math.max(24000,Math.round(([64,174,108,140,91][mode]+int(c,-8,8))*ECONOMY[c.tier].transferScale)*1000);
   const p=player(c,role,rating,age,potential,'market');
-  return {...p,fee:Math.max(24000,fee),type:['High-upside kid','Instant upgrade','Creative gamble','Proven starter','Future star'][mode]};
+  return {...p,fee,type:['High-upside kid','Instant upgrade','Creative gamble','Proven starter','Future star'][mode]};
  });
  c.signed=false;c.scouted=false;c.scoutedId=null;c.windowPassed=false;c.lastSigning=null;c.lastChoice=null;
  // Your team's identity persists between windows; scouting each opponent is optional.
@@ -316,14 +328,14 @@ export function signPlayer(input,id){
  if(!c||c.match||c.report||c.checkpoint||c.seasonComplete||c.signed||c.windowPassed) return s;
  const p=c.market.find(p=>p.id===id);
  if(!p||p.fee>c.budget)return s;
- const preview=transferPreview(c,p),reputationBefore=c.reputation;
+ const preview=transferPreview(c,p),reputationBefore=c.reputation,budgetBefore=c.budget;
  if(c.roster.length>=MAX_SQUAD)return input;
  c.roster.push({...p,origin:'transfer'});c.budget-=p.fee;c.signed=true;
  const excitement=preview.overall>0||preview.attack>0||preview.defence>0?75:20;
  c.supporters+=excitement;c.reputation=clamp(c.reputation+(preview.overall>0?1:0),0,100);
  c.lastSigning={id:p.id,name:p.name,role:p.role,age:p.age,ovr:p.ovr,potential:p.potential,fee:p.fee,
   oldName:preview.oldName,oldRating:preview.oldRating,upgrade:preview.upgrade,attack:preview.attack,defence:preview.defence,
-  overall:preview.overall,budget:c.budget,supportersChange:excitement,reputationChange:c.reputation-reputationBefore};
+  overall:preview.overall,budgetBefore,budget:c.budget,supportersChange:excitement,reputationChange:c.reputation-reputationBefore};
  c.memories.unshift('NEW SIGNING: '+p.name+' arrives from the transfer market. '+(preview.upgrade>0?'+ '+preview.upgrade+' OVR over the previous '+p.role+'.':'An investment in the future.'));
  return s;
 }
@@ -431,9 +443,8 @@ export function finishMatch(input,choice='hold'){
   const p=c.roster.find(x=>x.id===e.scorer);if(p)p.stats.goals++;
  });
  const development=growAfterMatch(c),growth=development.growth;
- const baseIncome=ours>theirs?34000:ours===theirs?18000:9000;
- const reputationBonus=Math.round(c.reputation/10)*3000;
- const earned=baseIncome+reputationBonus;c.budget+=earned;
+ const cash=matchdayIncome(c,ours>theirs?'WIN':ours===theirs?'DRAW':'LOSS');
+ const reputationBonus=cash.reputationBonus,earned=cash.total;c.budget+=earned;
  const supportersBefore=c.supporters,momentumBefore=c.momentum,reputationBefore=c.reputation;
  const shock=m.fixture.opp.strength>teamRating(c)+5;
  const supportersChange=ours>theirs?(shock?280:180)+int(c,0,80):ours===theirs?40+int(c,0,30):-Math.min(c.supporters-200,45+int(c,0,45));
@@ -505,7 +516,7 @@ export function advanceSeason(input){
  c.careerResults.push({season:c.season,...summary});
  if(summary.promoted)c.tier++;
  else if(summary.relegated)c.tier--;
- c.season++;c.budget+=c.tier===0?180000:c.tier===1?1350000:9000000;
+ c.season++;c.budget+=ECONOMY[c.tier].seasonGrant;
  c.supporters+=summary.promoted?900:summary.relegated?-250:150;
  c.reputation=clamp(c.reputation+(summary.promoted?12:summary.relegated?-6:3),0,100);c.momentum=50;
  c.roster.forEach(p=>{p.age++;p.form=0;});
