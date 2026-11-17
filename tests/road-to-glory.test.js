@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
- freshState,startCareer,CLUBS,ROLES,FIXTURES,validState,lineup,teamRating,
+ freshState,startCareer,restartCareer,CLUBS,ROLES,FIXTURES,validState,lineup,teamRating,
  signPlayer,scoutPlayer,chooseTactic,transferPreview,passMarket,migrateState,clubBoost,MAX_SQUAD, DIVISION_CONFIG, growthWatch,tacticalMatchup,resolveOffseason,startingChoices,kickoff,finishMatch,quickSim,dismissReport,
  chapterChoice,advanceSeason,archiveCareer,standings,seasonSummary
 } from '../src/rtg/engine.js';
@@ -390,4 +390,55 @@ test('rival lineups vary between fresh careers instead of always showing the sam
  }
  assert.ok(pools.size>=4);
  assert.ok(names.size>=11,'alternate coastal clubs appear over multiple careers');
+});
+
+test('new game ends only the active career and retains past trophies and history',()=>{
+ const initial=freshState();
+ initial.legacy.runs=[{id:1,club:'Oldbridge',results:[]}];
+ initial.legacy.legends=[{id:'legend-1',name:'A Legend'}];
+ initial.legacy.points=14;
+ initial.legacy.trophies=[{id:'run-1-season-1-title',run:1,season:1,label:'Coastal Champion'}];
+ let s=startCareer(initial,'northstar',740);
+ const originalRun=s.career.run;
+ s.career.trophies=[{id:'run-'+originalRun+'-season-1-title',run:originalRun,season:1,label:'National Title',tier:1}];
+ s=quickSim(s);
+ assert.ok(s.career.report);
+ const abandoned=restartCareer(s);
+ assert.equal(abandoned.career,null);
+ assert.equal(abandoned.legacy.runs.length,1);
+ assert.equal(abandoned.legacy.legends.length,1);
+ assert.equal(abandoned.legacy.points,14);
+ assert.equal(abandoned.legacy.trophies.length,2);
+ assert.ok(validState(abandoned));
+ s=startCareer(abandoned,'willow',741);
+ assert.equal(s.career.round,0);
+ assert.equal(s.career.season,1);
+ assert.equal(s.career.roster.length,15);
+ assert.ok(s.career.run>originalRun,'new career uses a distinct run ID');
+ assert.equal(s.legacy.trophies.length,2);
+ assert.ok(validState(s));
+});
+test('start over everything makes a blank new game without cached history',()=>{
+ let s=startCareer(freshState(),'copper',100);
+ s=quickSim(s);
+ s.legacy.trophies=[{id:'old-title',label:'Old Cup'}];
+ s.legacy.runs=[{id:1,club:'Example'}];
+ s.legacy.points=200;
+ const before=JSON.stringify(s);
+ const erased=restartCareer(s,{eraseHistory:true});
+ assert.deepEqual(erased,freshState());
+ assert.notEqual(JSON.stringify(s),JSON.stringify(erased));
+ assert.equal(JSON.stringify(s),before,'old state was not mutated');
+ assert.ok(validState(erased));
+ const fresh=startCareer(erased,'moon',101);
+ assert.equal(fresh.career.run,1);
+ assert.equal(fresh.legacy.trophies.length,0);
+ assert.ok(validState(fresh));
+});
+test('cancelled restart leaves career state entirely unchanged',()=>{
+ const s=startCareer(freshState(),'bracken',333);
+ const before=JSON.stringify(s);
+ assert.ok(s.career);
+ // Closing the confirmation dialog never invokes restartCareer.
+ assert.equal(JSON.stringify(s),before);
 });
