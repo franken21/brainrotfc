@@ -148,6 +148,21 @@ function buildSeason(c){
  generateMarket(c);
 }
 export function freshState(){return {version:VERSION,legacy:{runs:[],legends:[],trophies:[],points:0},career:null};}
+export function restartCareer(input,{eraseHistory=false}={}){
+ // Abandon the active run only after explicit manager confirmation in the UI.
+ // Silverware already earned is kept when beginning another career.
+ if(eraseHistory)return freshState();
+ const s=clone(input&&input.version===VERSION?input:freshState());
+ if(!Array.isArray(s.legacy.trophies))s.legacy.trophies=[];
+ if(s.career){
+  for(const award of s.career.trophies||[]){
+   if(!s.legacy.trophies.some(x=>x.id===award.id))s.legacy.trophies.push(award);
+  }
+  s.legacy.nextRunId=Math.max(s.legacy.nextRunId||1,(s.career.run||0)+1);
+ }
+ s.career=null;
+ return s;
+}
 export function startCareer(input,clubId,seed=Date.now()){
  const s=clone(input&&input.version===VERSION?input:freshState());
  const club=CLUBS.find(x=>x.id===clubId);if(!club)throw Error('Choose a valid club');
@@ -155,7 +170,8 @@ export function startCareer(input,clubId,seed=Date.now()){
  const c={id:club.id,club:club.name,crest:club.crest,colors:club.colors,season:1,tier:0,
   budget:club.budget,seed:(seed>>>0)||1,serial:0,roster:[],round:0,careerResults:[],memories:[],
   supporters:club.id==='northstar'?920:club.id==='ironvale'?780:1100,momentum:50,reputation:10,
-  trophies:[],run:(s.legacy.runs.length+1)};
+  trophies:[],run:Math.max(s.legacy.nextRunId||1,...s.legacy.runs.map(x=>(Number(x.id)||0)+1),...s.legacy.trophies.map(x=>(Number(x.run)||0)+1),s.career?(s.career.run||0)+1:1)};
+ s.legacy.nextRunId=c.run+1;
  c.roster=ROLES.map((role,i)=>{
   const ovr=clamp(club.base+int(c,-7,6)+(club.bonus[role]||0),42,69);
   return player(c,role,ovr,int(c,20,29),ovr+int(c,4,13));
