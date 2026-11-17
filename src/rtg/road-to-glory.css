@@ -742,3 +742,43 @@
  .rtg-prematch .rtg-kickoff-actions .rtg-button{min-height:41px;font-size:10px!important}
 }
 @media(max-width:650px){.rtg-prematch-heading-primary{padding-right:0;padding-top:42px}.rtg-top-kickoff{top:0;right:0;left:0;min-width:0;width:100%;padding:10px!important}}
+
+/* Start over — deliberately easy to find, difficult to trigger accidentally */
+.rtg-new-game-link{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:38px;padding:9px 12px;margin-top:14px;background:#26382f;border:1px solid #668066;border-radius:6px;color:#d9f3c9!important;font-size:10px;font-weight:900;letter-spacing:.08em;text-align:center}
+.rtg-new-game-link:hover{background:#3f5c45;border-color:var(--rtg-lime);color:var(--rtg-lime)!important}
+.rtg-topbar-newgame{background:transparent;border:1px solid #61745d;border-radius:5px;padding:7px 9px;color:var(--rtg-lime);font-size:9px;font-weight:900;letter-spacing:.06em;white-space:nowrap}
+.rtg-topbar-newgame:hover{background:#ffffff12}
+.rtg-dashboard-restart{font-size:10px!important}
+.rtg-reset-overlay{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;padding:20px;background:#070e0ce8;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+.rtg-reset-dialog{width:100%;max-width:540px;max-height:min(92vh,780px);overflow-y:auto;padding:26px;border-radius:10px;background:#182c25;border:1px solid #8eb78b;box-shadow:0 15px 75px #000b,0 0 0 5px #172c2766;color:#f1f8e9}
+.rtg-reset-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
+.rtg-reset-close{border:1px solid #647c68;color:#dbe9d6;background:#284136;width:33px;height:33px;border-radius:5px;font-size:22px;line-height:1}
+.rtg-reset-dialog h2{font:900 48px/.95 'Barlow Condensed','Arial Narrow',sans-serif;text-transform:uppercase;margin:0 0 12px}
+.rtg-reset-dialog>p{font-size:12px;line-height:1.75;color:#b8cfc0;margin-bottom:21px}
+.rtg-reset-dialog>p strong{color:#f7f9e6}
+.rtg-reset-options{display:grid;gap:11px}
+.rtg-reset-choice{display:grid;grid-template-columns:42px 1fr 20px;align-items:center;gap:13px;text-align:left;background:#284532;border:1px solid #91b67d;border-radius:7px;padding:17px;color:#e9f6e2}
+.rtg-reset-choice:hover{background:#365b40;transform:translateY(-1px)}
+.rtg-reset-option-icon{display:grid;place-items:center;height:42px;width:42px;background:var(--rtg-lime);border-radius:6px;color:#233d25;font-size:28px;font-weight:900}
+.rtg-reset-choice>span:nth-child(2){display:flex;flex-direction:column;gap:5px}
+.rtg-reset-choice strong{font:900 25px/1 'Barlow Condensed',sans-serif;letter-spacing:.01em}
+.rtg-reset-choice small{font:400 11px/1.5 'DM Sans',sans-serif;color:#bdd0bb}
+.rtg-reset-arrow{font-size:22px;color:var(--rtg-lime)}
+.rtg-reset-choice.danger{background:#382726;border-color:#86504a}
+.rtg-reset-choice.danger:hover{background:#553333;border-color:#cc8779}
+.rtg-reset-choice.danger .rtg-reset-option-icon{background:#b8645b;color:#fff6ec}
+.rtg-reset-choice.danger .rtg-reset-arrow{color:#e7a7a1}
+.rtg-reset-cancel{width:100%;margin-top:15px;min-height:44px}
+@media(max-width:850px){
+ .rtg-topbar-newgame{padding:6px 8px;font-size:9px}
+}
+@media(max-width:650px){
+ .rtg-topbar-fans{display:none}
+ .rtg-topbar-newgame{font-size:8px;min-height:31px}
+ .rtg-dashboard-restart{padding:10px!important}
+ .rtg-reset-dialog{padding:19px 16px}
+ .rtg-reset-dialog h2{font-size:43px}
+ .rtg-reset-choice{grid-template-columns:35px 1fr 15px;gap:9px;padding:14px 11px}
+ .rtg-reset-option-icon{width:35px;height:35px;font-size:23px}
+ .rtg-reset-choice strong{font-size:23px}
+}
