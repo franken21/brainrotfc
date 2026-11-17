@@ -8,8 +8,8 @@ export const MAX_SQUAD = 20;
 // Each higher tier scales both recruitment costs and matchday receipts.
 export const ECONOMY = [
  {match:{WIN:11000,DRAW:7000,LOSS:4000},reputationBonusMax:2500,seasonGrant:105000,transferScale:1},
- {match:{WIN:100000,DRAW:65000,LOSS:35000},reputationBonusMax:20000,seasonGrant:800000,transferScale:12},
- {match:{WIN:750000,DRAW:450000,LOSS:250000},reputationBonusMax:150000,seasonGrant:6000000,transferScale:95}
+ {match:{WIN:100000,DRAW:65000,LOSS:35000},reputationBonusMax:20000,seasonGrant:1050000,transferScale:12},
+ {match:{WIN:750000,DRAW:450000,LOSS:250000},reputationBonusMax:150000,seasonGrant:8500000,transferScale:95}
 ];
 export function matchdayIncome(c,result){
  const rules=ECONOMY[c.tier];
@@ -144,7 +144,7 @@ function generateMarket(c){
   const rating=clamp(base+[-3,7,2,5,0][mode]+int(c,-3,3),47,94);
   const age=[18,28,23,25,20][mode]+int(c,-1,2);
   const potential=clamp(rating+[18,3,11,6,16][mode]+int(c,-2,4),rating,98);
-   const fee=Math.max(24000,Math.round(([64,174,108,140,91][mode]+int(c,-8,8))*ECONOMY[c.tier].transferScale)*1000);
+   const fee=Math.max(24000,Math.round(([90,189,125,157,111][mode]+int(c,-7,7))*ECONOMY[c.tier].transferScale)*1000);
   const p=player(c,role,rating,age,potential,'market');
   return {...p,fee,type:['High-upside kid','Instant upgrade','Creative gamble','Proven starter','Future star'][mode]};
  });
