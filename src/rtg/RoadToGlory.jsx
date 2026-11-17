@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
-import {CLUBS,DIVISIONS,DIVISION_CONFIG,MAX_SQUAD,ROLES,TACTICS,startingChoices,resolveOffseason,SAVE_KEY,VERSION,freshState,startCareer,lineup,profile,teamRating,nextFixture,standings,signPlayer,scoutPlayer,chooseTactic,kickoff,finishMatch,quickSim,dismissReport,chapterChoice,advanceSeason,archiveCareer,seasonSummary,formatCash,ordinal,validState,transferPreview,passMarket,migrateState,clubBoost,growthWatch,tacticalMatchup} from './engine.js';
+import {CLUBS,DIVISIONS,DIVISION_CONFIG,MAX_SQUAD,ROLES,TACTICS,startingChoices,resolveOffseason,SAVE_KEY,VERSION,freshState,startCareer,restartCareer,lineup,profile,teamRating,nextFixture,standings,signPlayer,scoutPlayer,chooseTactic,kickoff,finishMatch,quickSim,dismissReport,chapterChoice,advanceSeason,archiveCareer,seasonSummary,formatCash,ordinal,validState,transferPreview,passMarket,migrateState,clubBoost,growthWatch,tacticalMatchup} from './engine.js';
 import './road-to-glory.css';
 
 function loadGame(){
@@ -29,6 +29,26 @@ function Pitch({eleven,compact=false,club}){
  </div>;
 }
 function TrophyCabinet({trophies=[],mini=false,go}){const shown=trophies.slice().reverse();return <section className={'rtg-cabinet '+(mini?'mini':'')}><div className="rtg-cabinet-title"><div><span className="rtg-eyebrow">THE TROPHY CABINET</span><strong>{shown.length?shown.length+' pieces of silverware':'The shelves are waiting'}</strong></div>{go&&<button type="button" className="rtg-textbutton" onClick={()=>go('almanac')}>OPEN CABINET →</button>}</div><div className="rtg-cabinet-shelf">{shown.length?shown.slice(0,mini?4:24).map((t,i)=><div className={'rtg-trophy rtg-trophy-tier-'+t.tier} key={t.id}><span className="rtg-trophy-icon">{t.icon||'🏆'}</span><div><strong>{t.label}</strong><small>{t.club} · Season {t.season}</small></div></div>):[0,1,2].map(i=><div className="rtg-trophy empty" key={i}><span className="rtg-trophy-icon">{i===2?'♕':'♧'}</span><div><strong>{['Coastal','National','Premier'][i]} title</strong><small>Not won yet</small></div></div>)}</div></section>}
+
+function NewGameDialog({club,onCancel,onConfirm}){
+ return <div className="rtg-reset-overlay">
+  <section className="rtg-reset-dialog" role="dialog" aria-modal="true" aria-labelledby="rtg-reset-title" aria-describedby="rtg-reset-description">
+   <div className="rtg-reset-header"><span className="rtg-eyebrow">A NEW CHAPTER AWAITS</span><button type="button" className="rtg-reset-close" aria-label="Cancel starting a new game" onClick={onCancel}>×</button></div>
+   <h2 id="rtg-reset-title">Start a new game?</h2>
+   <p id="rtg-reset-description">This ends your current <strong>{club}</strong> career and returns to club selection. Your current squad, fixtures and uncompleted season cannot be recovered unless you exported a save.</p>
+   <div className="rtg-reset-options">
+    <button type="button" className="rtg-reset-choice" onClick={()=>onConfirm(false)}>
+     <span className="rtg-reset-option-icon">✦</span><span><strong>NEW CAREER</strong><small>Start again with a new club. Keep earned trophies and completed career history.</small></span><span className="rtg-reset-arrow">→</span>
+    </button>
+    <button type="button" className="rtg-reset-choice danger" onClick={()=>onConfirm(true)}>
+     <span className="rtg-reset-option-icon">↻</span><span><strong>RESET EVERYTHING</strong><small>Completely fresh start. Erases every career, trophy and Hall of Fame record from this browser.</small></span><span className="rtg-reset-arrow">→</span>
+    </button>
+   </div>
+   <button className="rtg-button ghost rtg-reset-cancel" type="button" onClick={onCancel}>CANCEL · BACK TO MY CLUB</button>
+  </section>
+ </div>;
+}
+
 function Landing({legacy,onStart,onImport}){
  const [selection,setSelection]=useState(null),[seed]=useState(()=>Date.now()),[choiceRound,setChoiceRound]=useState(0),importRef=useRef(null);
  const offered=startingChoices(seed,choiceRound);
@@ -57,7 +77,7 @@ function Landing({legacy,onStart,onImport}){
   </div>
  </div>;
 }
-function Dashboard({c,go}){
+function Dashboard({c,go,onNewGame}){
  const f=nextFixture(c),club=CLUBS.find(x=>x.id===c.id),p=profile(c),position=standings(c).findIndex(x=>x.id==='you')+1;
  const next=c.report?'result':c.checkpoint?'checkpoint':c.seasonComplete?'season':c.match?'match':null;
  const marketOpen=!c.signed&&!c.windowPassed&&!c.seasonComplete&&c.roster.length<MAX_SQUAD;
@@ -73,7 +93,7 @@ function Dashboard({c,go}){
    <span className="rtg-eyebrow">SEASON {c.season} · ROUND {Math.min(18,c.round+1)}/18</span>
    <h1>{c.round===0?'The opening whistle.':c.momentum>=65?'The town believes.':c.momentum<36?'Time to fight back.':'The next match awaits.'}<br/><em>{c.club}.</em></h1>
    <div className="rtg-hero-actions"><button className="rtg-button primary" onClick={()=>go(next||'prematch')}>{next?'CONTINUE SEASON':'PREPARE FOR MATCH'} <span>→</span></button>
-   {marketOpen&&<button className="rtg-button secondary" onClick={()=>go('market')}>OPEN TRANSFERS</button>}</div>
+   {marketOpen&&<button className="rtg-button secondary" onClick={()=>go('market')}>OPEN TRANSFERS</button>}<button type="button" className="rtg-button ghost rtg-dashboard-restart" onClick={onNewGame}>↻ NEW GAME</button></div>
   </div><div className="rtg-hero-art"><span className="rtg-huge-crest">{club.crest}</span></div></div>
   <div className="rtg-metrics rtg-metrics-six"><DotStat label="LEAGUE" value={ordinal(position)}/><DotStat label="XI STRENGTH" value={p.overall+' OVR'}/><DotStat label="FUNDS" value={formatCash(c.budget)}/><DotStat label="SUPPORTERS" value={c.supporters.toLocaleString('en-GB')}/><DotStat label="FORM" value={c.momentum+'/100'}/><DotStat label="REPUTATION" value={c.reputation+'/100'}/></div>
   <div className="rtg-dashboard-grid rtg-matchday-grid">
@@ -337,7 +357,7 @@ function SeasonEnd({c,onAdvance,onArchive,go}){
 }
 
 export default function RoadToGlory(){
- const [game,setGame]=useState(loadGame),[view,setView]=useState('home'),[notice,setNotice]=useState('');
+ const [game,setGame]=useState(loadGame),[view,setView]=useState('home'),[notice,setNotice]=useState(''),[showNewGame,setShowNewGame]=useState(false);
  const c=game.career;
  useEffect(()=>{try{localStorage.setItem(SAVE_KEY,JSON.stringify(game));}catch(e){console.warn('Unable to save career',e);setNotice('Browser storage is unavailable. Export your career in the Almanac.');}},[game]);
  const act=fn=>setGame(prev=>{const next=fn(prev);if(!validState(next)){console.error('Road to Glory rejected invalid state');setNotice('A save-integrity check prevented this action.');return prev;}return next;});
@@ -352,6 +372,8 @@ export default function RoadToGlory(){
  const archive=()=>{act(archiveCareer);go('home');};
  const resolveOffers=id=>{act(state=>resolveOffseason(state,id));go('season');};
  const importGame=s=>{setGame(s);go('home');setNotice('Save imported successfully.');};
+ const openNewGame=()=>setShowNewGame(true);
+ const confirmNewGame=eraseHistory=>{act(s=>restartCareer(s,{eraseHistory}));setShowNewGame(false);setNotice('');go('home');};
  if(!c)return <Landing legacy={game.legacy} onStart={start} onImport={importGame}/>;
  const club=CLUBS.find(x=>x.id===c.id);
  let activeView=c.report&&view==='result'?'result':c.match&&view==='match'?'match':view;
@@ -371,12 +393,12 @@ export default function RoadToGlory(){
     <a className="rtg-brand" href="/"><span className="rtg-brand-symbol">R<span>✦</span></span><div><strong>ROAD TO GLORY</strong><small>POCKET EDITION</small></div></a>
     <div className="rtg-sideclub"><Badge club={club}/><div><span>THE MANAGER OF</span><strong>{c.club}</strong><small>{DIVISIONS[c.tier]} · S{c.season}</small></div></div>
     <div className="rtg-sidelabel">THE CLUB</div><nav className="rtg-nav">{MENU.map(([id,icon,label])=><button type="button" key={id} className={view===id?'active':''} onClick={()=>go(id)}><span>{icon}</span>{label}{id==='market'&&!c.signed&&!c.checkpoint&&!c.report&&<i/>}</button>)}</nav>
-    <div className="rtg-sidebar-bottom"><span>THE LONG ROAD</span><div className="rtg-season-dots">{Array.from({length:5},(_,i)=><i key={i} className={i<c.season?'passed':i===c.season-1?'active':''}/>)}</div><strong>Season {c.season} of 5</strong><small>Build something they'll remember.</small><a href="/" className="rtg-exit">← Back to Brainrot FC</a></div>
+    <div className="rtg-sidebar-bottom"><span>THE LONG ROAD</span><div className="rtg-season-dots">{Array.from({length:5},(_,i)=><i key={i} className={i<c.season?'passed':i===c.season-1?'active':''}/>)}</div><strong>Season {c.season} of 5</strong><small>Build something they'll remember.</small><button type="button" className="rtg-new-game-link" onClick={openNewGame}>↻ NEW GAME / START OVER</button><a href="/" className="rtg-exit">← Back to Brainrot FC</a></div>
    </aside>
-   <div className="rtg-shell"><header className="rtg-topbar"><div><span className="rtg-topbar-issue">THE FOOTBALL CHRONICLE</span><span className="rtg-topbar-title">S{c.season} · MATCHWEEK {Math.min(18,c.round+1)} / 18</span></div><div className="rtg-topbar-right"><span className="rtg-live-dot"/> <span className="rtg-topbar-save">AUTO SAVED</span> <span className="rtg-topbar-divider"/> <b className="rtg-topbar-fans">♬ {c.supporters.toLocaleString('en-GB')} FANS</b> <span className="rtg-topbar-divider"/> <b>{formatCash(c.budget)}</b></div></header>
+   <div className="rtg-shell"><header className="rtg-topbar"><div><span className="rtg-topbar-issue">THE FOOTBALL CHRONICLE</span><span className="rtg-topbar-title">S{c.season} · MATCHWEEK {Math.min(18,c.round+1)} / 18</span></div><div className="rtg-topbar-right"><span className="rtg-live-dot"/> <span className="rtg-topbar-save">AUTO SAVED</span> <span className="rtg-topbar-divider"/> <b className="rtg-topbar-fans">♬ {c.supporters.toLocaleString('en-GB')} FANS</b> <span className="rtg-topbar-divider"/> <b>{formatCash(c.budget)}</b><button type="button" className="rtg-topbar-newgame" onClick={openNewGame}>↻ NEW GAME</button></div></header>
     {notice&&<div className="rtg-notice" role="status">{notice}<button onClick={()=>setNotice('')}>×</button></div>}
     <main className={'rtg-main '+(special?'rtg-main-special':'')}>
-      {activeView==='home'&&<Dashboard c={c} go={go}/>}
+      {activeView==='home'&&<Dashboard c={c} go={go} onNewGame={openNewGame}/>}
       {activeView==='squad'&&<Squad c={c} act={act} go={go}/>}
       {activeView==='market'&&<Market c={c} act={act} go={go}/>}
       {activeView==='league'&&<League c={c}/>}
@@ -395,5 +417,6 @@ export default function RoadToGlory(){
     </main><footer className="rtg-footer">ROAD TO GLORY / A FOOTBALL-FIRST ARCADE CAREER <span>YOUR STORY. YOUR RULES.</span></footer>
    </div>
    <nav className="rtg-mobile-nav">{MENU.map(([id,icon,label])=><button key={id} type="button" className={view===id?'active':''} onClick={()=>go(id)}><span>{icon}</span><small>{label}</small></button>)}</nav>
+   {showNewGame&&<NewGameDialog club={c.club} onCancel={()=>setShowNewGame(false)} onConfirm={confirmNewGame}/>}
   </div>;
 }
